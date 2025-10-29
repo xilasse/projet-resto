@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Menu du Restaurant</title>
+    <link rel="stylesheet" href="../css/client-style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="client-header">
+            <h1>Menu du Jour</h1>
+            <div class="table-info">
+                <span id="tableNumber">Table #</span>
+            </div>
+        </header>
+
+        <main class="menu-content">
+            <div class="categories" id="categories">
+                <!-- Les catégories seront ajoutées dynamiquement -->
+            </div>
+
+            <div class="menu-items" id="menuItems">
+                <!-- Les plats seront affichés ici -->
+            </div>
+        </main>
+
+        <div class="cart-section">
+            <div class="cart-header">
+                <h3>Votre commande</h3>
+                <span class="cart-count" id="cartCount">0</span>
+            </div>
+            <div class="cart-items" id="cartItems">
+                <!-- Les articles du panier seront affichés ici -->
+            </div>
+            <div class="cart-footer">
+                <div class="cart-total">
+                    <span>Total: <span id="cartTotal">0.00</span> €</span>
+                </div>
+                <button id="orderBtn" class="btn btn-primary" disabled>Passer la commande</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de confirmation -->
+    <div id="confirmModal" class="modal">
+        <div class="modal-content">
+            <h3>Confirmer la commande</h3>
+            <div class="order-summary" id="orderSummary">
+                <!-- Résumé de la commande -->
+            </div>
+            <div class="form-actions">
+                <button id="confirmOrderBtn" class="btn btn-primary">Confirmer</button>
+                <button id="cancelOrderBtn" class="btn btn-secondary">Annuler</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de paiement -->
+    <div id="paymentModal" class="modal">
+        <div class="modal-content">
+            <h3>Paiement</h3>
+            <div class="payment-methods">
+                <button class="payment-btn" data-method="card">Carte Bancaire</button>
+                <button class="payment-btn" data-method="cash">Espèces</button>
+                <button class="payment-btn" data-method="mobile">Paiement Mobile</button>
+            </div>
+            <div class="payment-form" id="paymentForm">
+                <!-- Le formulaire de paiement sera inséré ici -->
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/client-menu.js"></script>
+</body>
+</html>
