@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestion Restaurant - Administration</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <h1>Gestion Restaurant</h1>
+            <nav class="nav">
+                <button id="menuTab" class="nav-btn active">Menu</button>
+                <button id="tablesTab" class="nav-btn">Tables</button>
+                <button id="ordersTab" class="nav-btn">Commandes</button>
+                <button id="stockTab" class="nav-btn">Stock</button>
+            </nav>
+        </header>
+
+        <main class="main-content">
+            <!-- Section Gestion du Menu -->
+            <section id="menuSection" class="section active">
+                <div class="section-header">
+                    <h2>Gestion du Menu</h2>
+                    <button id="addMenuItemBtn" class="btn btn-primary">Ajouter un plat</button>
+                </div>
+                <div class="menu-grid" id="menuGrid">
+                    <!-- Les éléments du menu seront ajoutés dynamiquement -->
+                </div>
+            </section>
+
+            <!-- Section Gestion des Tables -->
+            <section id="tablesSection" class="section">
+                <div class="section-header">
+                    <h2>Disposition des Tables</h2>
+                    <div class="header-buttons">
+                        <button id="addRoomBtn" class="btn btn-secondary">Ajouter une salle</button>
+                        <button id="addTableBtn" class="btn btn-primary">Ajouter une table</button>
+                    </div>
+                </div>
+                <div class="rooms-container" id="roomsContainer">
+                    <!-- Les salles seront affichées ici -->
+                </div>
+            </section>
+
+            <!-- Section Commandes -->
+            <section id="ordersSection" class="section">
+                <div class="section-header">
+                    <h2>Commandes en cours</h2>
+                </div>
+                <div class="orders-grid" id="ordersGrid">
+                    <!-- Les commandes seront affichées ici -->
+                </div>
+            </section>
+
+            <!-- Section Stock -->
+            <section id="stockSection" class="section">
+                <div class="section-header">
+                    <h2>Gestion des Stocks</h2>
+                    <button id="addStockBtn" class="btn btn-primary">Ajouter au Stock</button>
+                </div>
+                <div class="stock-grid" id="stockGrid">
+                    <!-- Le stock sera affiché ici -->
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal pour ajouter/modifier un plat -->
+    <div id="menuItemModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3 id="modalTitle">Ajouter un plat</h3>
+            <form id="menuItemForm">
+                <div class="form-group">
+                    <label for="itemName">Nom du plat:</label>
+                    <input type="text" id="itemName" required>
+                </div>
+                <div class="form-group">
+                    <label for="itemDescription">Description:</label>
+                    <textarea id="itemDescription"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="itemPrice">Prix (€):</label>
+                    <input type="number" id="itemPrice" step="0.01" required>
+                </div>
+                <div class="form-group">
+                    <label for="itemCategory">Catégorie:</label>
+                    <select id="itemCategory">
+                        <option value="entree">Entrée</option>
+                        <option value="plat">Plat principal</option>
+                        <option value="dessert">Dessert</option>
+                        <option value="boisson">Boisson</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="itemStock">Stock initial:</label>
+                    <input type="number" id="itemStock" min="0">
+                </div>
+                <div class="form-group">
+                    <label for="itemImage">URL de l'image:</label>
+                    <input type="url" id="itemImage">
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Sauvegarder</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeModal()">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal pour ajouter une table -->
+    <div id="tableModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Ajouter une table</h3>
+            <form id="tableForm">
+                <div class="form-group">
+                    <label for="tableNumber">Numéro de table:</label>
+                    <input type="number" id="tableNumber" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="tableRoom">Salle:</label>
+                    <select id="tableRoom" required>
+                        <option value="">-- Choisir une salle --</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Créer la table</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeTableModal()">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal pour ajouter du stock -->
+    <div id="stockModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Ajouter au Stock</h3>
+            <form id="stockForm">
+                <div class="form-group">
+                    <label for="stockItemSelect">Sélectionner un plat:</label>
+                    <select id="stockItemSelect" required>
+                        <option value="">-- Choisir un plat --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="stockQuantity">Quantité à ajouter:</label>
+                    <input type="number" id="stockQuantity" min="1" required>
+                </div>
+                <div class="form-group">
+                    <label for="stockReason">Motif (optionnel):</label>
+                    <select id="stockReason">
+                        <option value="achat">Achat</option>
+                        <option value="livraison">Livraison</option>
+                        <option value="correction">Correction d'inventaire</option>
+                        <option value="autre">Autre</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Ajouter au Stock</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeStockModal()">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal pour ajouter une salle -->
+    <div id="roomModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Ajouter une salle</h3>
+            <form id="roomForm">
+                <div class="form-group">
+                    <label for="roomName">Nom de la salle:</label>
+                    <input type="text" id="roomName" required placeholder="Ex: Salle principale, Terrasse, VIP...">
+                </div>
+                <div class="form-group">
+                    <label for="roomWidth">Largeur (en pixels):</label>
+                    <input type="number" id="roomWidth" min="300" max="800" value="600" required>
+                </div>
+                <div class="form-group">
+                    <label for="roomHeight">Hauteur (en pixels):</label>
+                    <input type="number" id="roomHeight" min="200" max="600" value="400" required>
+                </div>
+                <div class="form-group">
+                    <label for="roomColor">Couleur de fond:</label>
+                    <select id="roomColor">
+                        <option value="#f8f9fa">Gris clair</option>
+                        <option value="#e3f2fd">Bleu clair</option>
+                        <option value="#f3e5f5">Violet clair</option>
+                        <option value="#e8f5e8">Vert clair</option>
+                        <option value="#fff3e0">Orange clair</option>
+                        <option value="#ffebee">Rose clair</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Créer la salle</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeRoomModal()">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal pour éditer une salle -->
+    <div id="editRoomModal" class="modal">
+        <div class="modal-content">
+            <span class="close">&times;</span>
+            <h3>Modifier la salle</h3>
+            <form id="editRoomForm">
+                <input type="hidden" id="editRoomId">
+                <div class="form-group">
+                    <label for="editRoomName">Nom de la salle:</label>
+                    <input type="text" id="editRoomName" required placeholder="Ex: Salle principale, Terrasse, VIP...">
+                </div>
+                <div class="form-group">
+                    <label for="editRoomWidth">Largeur (en pixels):</label>
+                    <input type="number" id="editRoomWidth" min="300" max="1200" required>
+                    <small>Attention: Réduire la taille peut déplacer les tables existantes</small>
+                </div>
+                <div class="form-group">
+                    <label for="editRoomHeight">Hauteur (en pixels):</label>
+                    <input type="number" id="editRoomHeight" min="200" max="800" required>
+                    <small>Attention: Réduire la taille peut déplacer les tables existantes</small>
+                </div>
+                <div class="form-group">
+                    <label for="editRoomColor">Couleur de fond:</label>
+                    <select id="editRoomColor">
+                        <option value="#f8f9fa">Gris clair</option>
+                        <option value="#e3f2fd">Bleu clair</option>
+                        <option value="#f3e5f5">Violet clair</option>
+                        <option value="#e8f5e8">Vert clair</option>
+                        <option value="#fff3e0">Orange clair</option>
+                        <option value="#ffebee">Rose clair</option>
+                    </select>
+                </div>
+                <div class="form-actions">
+                    <button type="submit" class="btn btn-primary">Sauvegarder les modifications</button>
+                    <button type="button" class="btn btn-secondary" onclick="app.closeEditRoomModal()">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="../js/app.js"></script>
+</body>
+</html>
