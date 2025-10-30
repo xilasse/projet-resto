@@ -1,4 +1,254 @@
 /* Styles pour l'interface client (menu QR code) */
+
+/* Styles pour la section allergies améliorée */
+.allergies-section {
+    background: rgba(255,255,255,0.95);
+    border-radius: 15px;
+    padding: 25px;
+    margin: 20px 0;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    border-left: 5px solid #ff6b6b;
+}
+
+.allergies-header h4 {
+    color: #d63031;
+    margin-bottom: 10px;
+    font-size: 1.3em;
+    font-weight: 700;
+    text-align: center;
+}
+
+.allergies-info {
+    color: #636e72;
+    font-size: 0.95em;
+    margin-bottom: 20px;
+    line-height: 1.5;
+    text-align: center;
+    font-weight: 500;
+}
+
+.allergies-category {
+    margin-bottom: 25px;
+    padding: 15px;
+    background: rgba(116, 185, 255, 0.1);
+    border-radius: 10px;
+    border-left: 3px solid #74b9ff;
+}
+
+.allergies-category h5 {
+    color: #2d3436;
+    font-size: 1.1em;
+    font-weight: 600;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.allergies-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.allergy-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 12px 15px;
+    border-radius: 10px;
+    transition: all 0.2s ease;
+    font-size: 0.9em;
+    background: rgba(255,255,255,0.8);
+    border: 2px solid transparent;
+}
+
+.allergy-item:hover {
+    background-color: rgba(102, 126, 234, 0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.allergy-item input[type="checkbox"]:checked + span {
+    color: #d63031;
+    font-weight: 600;
+}
+
+.allergy-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: #ff6b6b;
+}
+
+.allergy-item span {
+    color: #333;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+/* Styles pour les allergies personnalisées */
+.custom-allergies {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(255, 235, 59, 0.1);
+    border-radius: 10px;
+    border-left: 3px solid #fdcb6e;
+}
+
+.custom-checkbox {
+    margin-bottom: 15px;
+    background: rgba(253, 203, 110, 0.2) !important;
+    border: 2px solid #fdcb6e;
+}
+
+.custom-input-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.custom-input-container input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.9em;
+}
+
+.custom-input-container input:focus {
+    border-color: #fdcb6e;
+    outline: none;
+}
+
+.btn-add-custom {
+    padding: 10px 20px;
+    background: #fdcb6e;
+    color: #2d3436;
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.btn-add-custom:hover {
+    background: #e17055;
+    color: white;
+}
+
+.custom-allergies-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.custom-allergy-tag {
+    background: #ff7675;
+    color: white;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.8em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.custom-allergy-tag .remove-btn {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0;
+    font-size: 1.1em;
+}
+
+/* Zone remarques */
+.other-allergies {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(156, 136, 255, 0.1);
+    border-radius: 10px;
+    border-left: 3px solid #a29bfe;
+}
+
+.other-allergies label {
+    display: block;
+    margin-bottom: 10px;
+    color: #2d3436;
+    font-weight: 600;
+    font-size: 1em;
+}
+
+.other-allergies textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 15px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 0.9em;
+    transition: border-color 0.2s ease;
+    line-height: 1.4;
+}
+
+.other-allergies textarea:focus {
+    outline: none;
+    border-color: #a29bfe;
+}
+
+.other-allergies textarea::placeholder {
+    color: #b2bec3;
+}
+
+/* Actions */
+.allergies-actions {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.btn-clear {
+    padding: 10px 25px;
+    background: #636e72;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-size: 0.9em;
+}
+
+.btn-clear:hover {
+    background: #2d3436;
+}
+
+/* Styles pour l'affichage des allergies dans la modal de confirmation */
+.order-allergies {
+    background: rgba(255, 243, 205, 0.8);
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.order-allergies h4 {
+    color: #856404;
+    margin-bottom: 10px;
+    font-size: 1em;
+    font-weight: 600;
+}
+
+.order-allergies p {
+    margin: 5px 0;
+    color: #856404;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+.order-allergies strong {
+    font-weight: 600;
+}
 * {
     margin: 0;
     padding: 0;

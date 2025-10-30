@@ -237,69 +237,68 @@ class ClientMenuApp {
     }
 
     renderCategories() {
-        const container = document.getElementById('categories');
-        container.innerHTML = '';
-
-        // Bouton "Tout"
-        const allBtn = document.createElement('button');
-        allBtn.className = 'category-btn active';
-        allBtn.textContent = 'Tout';
-        allBtn.addEventListener('click', () => {
-            this.filterByCategory('all');
-        });
-        container.appendChild(allBtn);
-
-        // Boutons des catégories
-        this.categories.forEach(category => {
-            const btn = document.createElement('button');
-            btn.className = 'category-btn';
-            btn.textContent = this.getCategoryLabel(category);
-            btn.addEventListener('click', () => {
-                this.filterByCategory(category);
-            });
-            container.appendChild(btn);
-        });
+        // Ne rien faire - les catégories sont maintenant des sections fixes
     }
 
     getCategoryLabel(category) {
         const labels = {
             'entree': 'Entrées',
             'plat': 'Plats principaux',
+            'accompagnement': 'Accompagnements',
             'dessert': 'Desserts',
-            'boisson': 'Boissons'
+            'boisson_soft': 'Boissons froides',
+            'boisson_chaude': 'Boissons chaudes',
+            'boisson_alcool': 'Boissons alcoolisées'
         };
         return labels[category] || category;
     }
 
-    filterByCategory(category) {
-        this.currentCategory = category;
-
-        // Mettre à jour les boutons
-        document.querySelectorAll('.category-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        event.target.classList.add('active');
-
-        this.renderMenuItems();
-    }
 
     renderMenuItems() {
         const container = document.getElementById('menuItems');
         container.innerHTML = '';
 
-        const filteredItems = this.currentCategory === 'all' ?
-            this.menuItems.filter(item => item.is_available) :
-            this.menuItems.filter(item => item.is_available && item.category === this.currentCategory);
+        // Définir l'ordre des sections
+        const sectionsOrder = [
+            { category: 'entree', title: 'Entrées' },
+            { category: 'plat', title: 'Plats Principaux' },
+            { category: 'accompagnement', title: 'Accompagnements' },
+            { category: 'dessert', title: 'Desserts' },
+            { category: 'boisson_soft', title: 'Boissons Froides' },
+            { category: 'boisson_chaude', title: 'Boissons Chaudes' },
+            { category: 'boisson_alcool', title: 'Boissons Alcoolisées' }
+        ];
 
-        if (filteredItems.length === 0) {
-            container.innerHTML = '<p style="text-align:center; color:#7f8c8d; margin:20px;">Aucun plat disponible dans cette catégorie</p>';
-            return;
-        }
+        sectionsOrder.forEach(section => {
+            const sectionItems = this.menuItems.filter(item =>
+                item.is_available && item.category === section.category
+            );
 
-        filteredItems.forEach(item => {
-            const itemElement = this.createMenuItemElement(item);
-            container.appendChild(itemElement);
+            if (sectionItems.length > 0) {
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = `menu-section ${section.category}`;
+
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'menu-section-title';
+                titleDiv.textContent = section.title;
+
+                const itemsDiv = document.createElement('div');
+                itemsDiv.className = 'menu-section-items';
+
+                sectionItems.forEach(item => {
+                    const itemElement = this.createMenuItemElement(item);
+                    itemsDiv.appendChild(itemElement);
+                });
+
+                sectionDiv.appendChild(titleDiv);
+                sectionDiv.appendChild(itemsDiv);
+                container.appendChild(sectionDiv);
+            }
         });
+
+        if (container.children.length === 0) {
+            container.innerHTML = '<p style="text-align:center; color:#7f8c8d; margin:20px;">Aucun plat disponible</p>';
+        }
     }
 
     createMenuItemElement(item) {

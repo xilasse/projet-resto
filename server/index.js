@@ -44,6 +44,19 @@ db.serialize(() => {
     }
   });
 
+  // Migration : ajouter les colonnes d'allergies à la table orders
+  db.run(`ALTER TABLE orders ADD COLUMN allergies TEXT`, (err) => {
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Erreur migration allergies:', err.message);
+    }
+  });
+
+  db.run(`ALTER TABLE orders ADD COLUMN other_allergies TEXT`, (err) => {
+    if (err && !err.message.includes('duplicate column name')) {
+      console.error('Erreur migration other_allergies:', err.message);
+    }
+  });
+
   db.run(`CREATE TABLE IF NOT EXISTS menu_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -63,6 +76,8 @@ db.serialize(() => {
     total_amount REAL,
     status TEXT DEFAULT 'en_attente',
     payment_status TEXT DEFAULT 'non_paye',
+    allergies TEXT,
+    other_allergies TEXT,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (table_id) REFERENCES tables (id)
   )`);
@@ -234,11 +249,11 @@ app.put('/api/menu/:id', (req, res) => {
 
 // Routes pour les commandes
 app.post('/api/orders', (req, res) => {
-  const { tableId, items, totalAmount } = req.body;
+  const { tableId, items, totalAmount, allergies, otherAllergies } = req.body;
 
   db.run(
-    'INSERT INTO orders (table_id, items, total_amount) VALUES (?, ?, ?)',
-    [tableId, JSON.stringify(items), totalAmount],
+    'INSERT INTO orders (table_id, items, total_amount, allergies, other_allergies) VALUES (?, ?, ?, ?, ?)',
+    [tableId, JSON.stringify(items), totalAmount, JSON.stringify(allergies || []), otherAllergies || ''],
     function(err) {
       if (err) {
         res.status(500).json({ error: err.message });
@@ -334,7 +349,8 @@ app.put('/api/orders/:id/status', (req, res) => {
 
 // Route pour servir le menu aux clients (via QR code)
 app.get('/menu/:tableNumber', (req, res) => {
-  res.sendFile(__dirname + '/public/client-menu.html');
+  const path = require('path');
+  res.sendFile(path.join(__dirname, '..', 'client', 'html', 'client-menu.html'));
 });
 
 // Route pour obtenir les informations d'une table

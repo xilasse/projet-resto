@@ -148,10 +148,51 @@ class RestaurantApp {
         const container = document.getElementById('menuGrid');
         container.innerHTML = '';
 
-        this.menuItems.forEach(item => {
-            const card = this.createMenuItemCard(item);
-            container.appendChild(card);
+        // Définir l'ordre des sections
+        const sectionsOrder = [
+            { category: 'entree', title: 'Entrées' },
+            { category: 'plat', title: 'Plats Principaux' },
+            { category: 'accompagnement', title: 'Accompagnements' },
+            { category: 'dessert', title: 'Desserts' },
+            { category: 'boisson_soft', title: 'Boissons Froides' },
+            { category: 'boisson_chaude', title: 'Boissons Chaudes' },
+            { category: 'boisson_alcool', title: 'Boissons Alcoolisées' }
+        ];
+
+        sectionsOrder.forEach(section => {
+            const sectionItems = this.menuItems.filter(item => item.category === section.category);
+
+            if (sectionItems.length > 0) {
+                // Créer la section
+                const sectionDiv = document.createElement('div');
+                sectionDiv.className = `admin-menu-section ${section.category}`;
+
+                // Titre de la section
+                const titleDiv = document.createElement('div');
+                titleDiv.className = 'admin-section-title';
+                titleDiv.innerHTML = `
+                    <h3>${section.title}</h3>
+                    <span class="section-count">${sectionItems.length} élément(s)</span>
+                `;
+
+                // Conteneur des items
+                const itemsDiv = document.createElement('div');
+                itemsDiv.className = 'admin-section-items';
+
+                sectionItems.forEach(item => {
+                    const card = this.createMenuItemCard(item);
+                    itemsDiv.appendChild(card);
+                });
+
+                sectionDiv.appendChild(titleDiv);
+                sectionDiv.appendChild(itemsDiv);
+                container.appendChild(sectionDiv);
+            }
         });
+
+        if (container.children.length === 0) {
+            container.innerHTML = '<div class="empty-state">Aucun plat dans le menu</div>';
+        }
     }
 
     createMenuItemCard(item) {
@@ -188,8 +229,11 @@ class RestaurantApp {
         const labels = {
             'entree': 'Entrée',
             'plat': 'Plat principal',
+            'accompagnement': 'Accompagnement',
             'dessert': 'Dessert',
-            'boisson': 'Boisson'
+            'boisson_soft': 'Boisson froide',
+            'boisson_chaude': 'Boisson chaude',
+            'boisson_alcool': 'Boisson alcoolisée'
         };
         return labels[category] || category;
     }

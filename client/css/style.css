@@ -655,3 +655,151 @@ body {
 .btn-secondary:hover {
     background-color: #7f8c8d;
 }
+
+/* Styles pour les sections séparées dans l'administration */
+.admin-menu-section {
+    margin-bottom: 30px;
+    background: white;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+    border-left: 5px solid #3498db;
+}
+
+.admin-section-title {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 20px 25px;
+    border-bottom: 1px solid #dee2e6;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.admin-section-title h3 {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 1.3em;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.admin-section-title h3::before {
+    content: '';
+    width: 4px;
+    height: 20px;
+    background: linear-gradient(45deg, #3498db, #2980b9);
+    border-radius: 2px;
+}
+
+.section-count {
+    background: #3498db;
+    color: white;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.85em;
+    font-weight: 500;
+}
+
+.admin-section-items {
+    padding: 25px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* Couleurs spécifiques par catégorie */
+.admin-menu-section.entree {
+    border-left-color: #e17055;
+}
+
+.admin-menu-section.entree .admin-section-title h3::before {
+    background: linear-gradient(45deg, #e17055, #d63031);
+}
+
+.admin-menu-section.entree .section-count {
+    background: #e17055;
+}
+
+.admin-menu-section.plat {
+    border-left-color: #00b894;
+}
+
+.admin-menu-section.plat .admin-section-title h3::before {
+    background: linear-gradient(45deg, #00b894, #00a085);
+}
+
+.admin-menu-section.plat .section-count {
+    background: #00b894;
+}
+
+.admin-menu-section.accompagnement {
+    border-left-color: #fdcb6e;
+}
+
+.admin-menu-section.accompagnement .admin-section-title h3::before {
+    background: linear-gradient(45deg, #fdcb6e, #e84393);
+}
+
+.admin-menu-section.accompagnement .section-count {
+    background: #e84393;
+}
+
+.admin-menu-section.dessert {
+    border-left-color: #a29bfe;
+}
+
+.admin-menu-section.dessert .admin-section-title h3::before {
+    background: linear-gradient(45deg, #a29bfe, #6c5ce7);
+}
+
+.admin-menu-section.dessert .section-count {
+    background: #a29bfe;
+}
+
+.admin-menu-section.boisson_soft {
+    border-left-color: #0984e3;
+}
+
+.admin-menu-section.boisson_soft .admin-section-title h3::before {
+    background: linear-gradient(45deg, #0984e3, #74b9ff);
+}
+
+.admin-menu-section.boisson_soft .section-count {
+    background: #0984e3;
+}
+
+.admin-menu-section.boisson_chaude {
+    border-left-color: #d63031;
+}
+
+.admin-menu-section.boisson_chaude .admin-section-title h3::before {
+    background: linear-gradient(45deg, #d63031, #e17055);
+}
+
+.admin-menu-section.boisson_chaude .section-count {
+    background: #d63031;
+}
+
+.admin-menu-section.boisson_alcool {
+    border-left-color: #e84393;
+}
+
+.admin-menu-section.boisson_alcool .admin-section-title h3::before {
+    background: linear-gradient(45deg, #e84393, #fd79a8);
+}
+
+.admin-menu-section.boisson_alcool .section-count {
+    background: #e84393;
+}
+
+.empty-state {
+    text-align: center;
+    color: #7f8c8d;
+    font-size: 1.1em;
+    padding: 40px;
+    background: #f8f9fa;
+    border-radius: 12px;
+    border: 2px dashed #dee2e6;
+}

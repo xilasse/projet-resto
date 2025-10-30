@@ -33,6 +33,133 @@
             <div class="cart-items" id="cartItems">
                 <!-- Les articles du panier seront affichés ici -->
             </div>
+
+            <!-- Section Allergies -->
+            <div class="allergies-section">
+                <div class="allergies-header">
+                    <h4>🚨 Allergies et intolérances</h4>
+                    <p class="allergies-info">Sélectionnez vos allergies pour que nous puissions adapter votre commande en toute sécurité :</p>
+                </div>
+
+                <!-- Allergènes majeurs (réglementation européenne) -->
+                <div class="allergies-category">
+                    <h5>Allergènes majeurs :</h5>
+                    <div class="allergies-grid">
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="gluten">
+                            <span>🌾 Gluten</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="lactose">
+                            <span>🥛 Lait/Lactose</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="oeufs">
+                            <span>🥚 Œufs</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="poisson">
+                            <span>🐟 Poisson</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="crustaces">
+                            <span>🦐 Crustacés</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="mollusques">
+                            <span>🦪 Mollusques</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="noix">
+                            <span>🥜 Fruits à coque</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="arachides">
+                            <span>🥜 Arachides</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="soja">
+                            <span>🌱 Soja</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="sesame">
+                            <span>🌰 Sésame</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="celeri">
+                            <span>🥬 Céleri</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="moutarde">
+                            <span>🌶️ Moutarde</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="sulfites">
+                            <span>🍷 Sulfites</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="lupin">
+                            <span>🌼 Lupin</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Autres intolérances courantes -->
+                <div class="allergies-category">
+                    <h5>Autres intolérances :</h5>
+                    <div class="allergies-grid">
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="vegetarien">
+                            <span>🌱 Végétarien</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="vegan">
+                            <span>🌿 Végan</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="halal">
+                            <span>🕌 Halal</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="kasher">
+                            <span>✡️ Kasher</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="sans_sucre">
+                            <span>🚫🍬 Sans sucre</span>
+                        </label>
+                        <label class="allergy-item">
+                            <input type="checkbox" name="allergies" value="sans_sel">
+                            <span>🚫🧂 Sans sel</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Zone personnalisée -->
+                <div class="custom-allergies">
+                    <label class="allergy-item custom-checkbox">
+                        <input type="checkbox" id="customAllergyToggle">
+                        <span>⚠️ Autre allergie non listée</span>
+                    </label>
+                    <div id="customAllergyInput" class="custom-input-container" style="display: none;">
+                        <input type="text" id="customAllergy" placeholder="Précisez votre allergie...">
+                        <button type="button" id="addCustomAllergy" class="btn-add-custom">Ajouter</button>
+                    </div>
+                    <div id="customAllergiesList" class="custom-allergies-list"></div>
+                </div>
+
+                <!-- Remarques générales -->
+                <div class="other-allergies">
+                    <label for="otherAllergies">💬 Remarques particulières :</label>
+                    <textarea id="otherAllergies" placeholder="Précisez toute demande spéciale, niveau de sensibilité, ou information importante pour la cuisine..."></textarea>
+                </div>
+
+                <!-- Bouton reset -->
+                <div class="allergies-actions">
+                    <button type="button" id="clearAllergies" class="btn-clear">🗑️ Effacer toutes les sélections</button>
+                </div>
+            </div>
+
             <div class="cart-footer">
                 <div class="cart-total">
                     <span>Total: <span id="cartTotal">0.00</span> €</span>

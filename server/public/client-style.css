@@ -1,0 +1,911 @@
+/* Styles modernes pour l'interface client (menu QR code) */
+
+/* Reset et variables CSS */
+:root {
+    --primary-color: #667eea;
+    --secondary-color: #764ba2;
+    --accent-color: #f093fb;
+    --success-color: #10ac84;
+    --warning-color: #feca57;
+    --danger-color: #ff6b6b;
+    --dark-color: #2c3e50;
+    --light-color: #ecf0f1;
+    --text-dark: #2d3436;
+    --text-light: #636e72;
+    --border-radius: 12px;
+    --box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Inter', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+    min-height: 100vh;
+    color: var(--text-dark);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+.container {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Header moderne */
+.client-header {
+    text-align: center;
+    margin-bottom: 30px;
+    color: white;
+    padding: 20px 0;
+}
+
+.client-header h1 {
+    font-size: clamp(2rem, 5vw, 3rem);
+    font-weight: 700;
+    margin-bottom: 15px;
+    text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+    letter-spacing: -0.02em;
+}
+
+.table-info {
+    background: rgba(255,255,255,0.2);
+    padding: 12px 24px;
+    border-radius: 25px;
+    display: inline-block;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255,255,255,0.3);
+    font-weight: 600;
+    font-size: 1.1em;
+}
+
+/* Navigation des catégories */
+.categories {
+    display: flex;
+    overflow-x: auto;
+    gap: 12px;
+    margin-bottom: 30px;
+    padding: 10px 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.3) transparent;
+}
+
+.categories::-webkit-scrollbar {
+    height: 4px;
+}
+
+.categories::-webkit-scrollbar-track {
+    background: rgba(255,255,255,0.1);
+    border-radius: 2px;
+}
+
+.categories::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,0.3);
+    border-radius: 2px;
+}
+
+.category-btn {
+    background: rgba(255,255,255,0.9);
+    color: var(--text-dark);
+    border: none;
+    padding: 12px 20px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    white-space: nowrap;
+    font-weight: 600;
+    font-size: 0.9em;
+    backdrop-filter: blur(10px);
+}
+
+.category-btn:hover {
+    background: white;
+    transform: translateY(-2px);
+    box-shadow: var(--box-shadow);
+}
+
+.category-btn.active {
+    background: var(--success-color);
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(16, 172, 132, 0.3);
+}
+
+/* Section du contenu principal */
+.menu-content {
+    flex: 1;
+    margin-bottom: 30px;
+}
+
+/* Grille des plats */
+.menu-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.menu-item {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 20px;
+    box-shadow: var(--box-shadow);
+    transition: var(--transition);
+    border: 1px solid rgba(255,255,255,0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.menu-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, var(--primary-color), var(--accent-color));
+}
+
+.menu-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 30px rgba(0,0,0,0.15);
+}
+
+.menu-item h3 {
+    font-size: 1.2em;
+    margin-bottom: 8px;
+    color: var(--text-dark);
+    font-weight: 700;
+}
+
+.menu-item .description {
+    color: var(--text-light);
+    font-size: 0.9em;
+    margin-bottom: 15px;
+    line-height: 1.5;
+}
+
+.menu-item .price {
+    font-size: 1.3em;
+    font-weight: 700;
+    color: var(--success-color);
+    margin-bottom: 15px;
+}
+
+.menu-item .stock {
+    font-size: 0.8em;
+    margin-bottom: 15px;
+    padding: 4px 8px;
+    border-radius: 6px;
+    display: inline-block;
+}
+
+.stock.high { background: rgba(16, 172, 132, 0.1); color: var(--success-color); }
+.stock.medium { background: rgba(254, 202, 87, 0.1); color: var(--warning-color); }
+.stock.low { background: rgba(255, 107, 107, 0.1); color: var(--danger-color); }
+
+.add-to-cart {
+    width: 100%;
+    background: var(--primary-color);
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 600;
+    font-size: 0.95em;
+}
+
+.add-to-cart:hover {
+    background: var(--secondary-color);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+}
+
+/* Section panier moderne */
+.cart-section {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 25px;
+    box-shadow: var(--box-shadow);
+    margin-top: 30px;
+    border-top: 4px solid var(--primary-color);
+}
+
+.cart-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 15px;
+    border-bottom: 2px solid var(--light-color);
+}
+
+.cart-header h3 {
+    color: var(--text-dark);
+    font-size: 1.4em;
+    font-weight: 700;
+}
+
+.cart-count {
+    background: var(--primary-color);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-weight: 600;
+    font-size: 0.9em;
+    min-width: 30px;
+    text-align: center;
+}
+
+.cart-items {
+    margin-bottom: 20px;
+}
+
+.cart-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 0;
+    border-bottom: 1px solid rgba(236, 240, 241, 0.7);
+}
+
+.cart-item:last-child {
+    border-bottom: none;
+}
+
+.cart-item-info {
+    flex: 1;
+}
+
+.cart-item-name {
+    font-weight: 600;
+    color: var(--text-dark);
+    margin-bottom: 4px;
+}
+
+.cart-item-price {
+    color: var(--text-light);
+    font-size: 0.9em;
+}
+
+.cart-item-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.quantity-btn {
+    width: 32px;
+    height: 32px;
+    border: 2px solid var(--primary-color);
+    background: white;
+    color: var(--primary-color);
+    border-radius: 50%;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    transition: var(--transition);
+}
+
+.quantity-btn:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+.quantity {
+    font-weight: 600;
+    min-width: 25px;
+    text-align: center;
+}
+
+/* Styles pour la section allergies */
+.allergies-section {
+    background: rgba(255,255,255,0.95);
+    border-radius: var(--border-radius);
+    padding: 25px;
+    margin: 20px 0;
+    box-shadow: var(--box-shadow);
+    border-left: 5px solid var(--danger-color);
+}
+
+.allergies-header h4 {
+    color: var(--danger-color);
+    margin-bottom: 10px;
+    font-size: 1.3em;
+    font-weight: 700;
+    text-align: center;
+}
+
+.allergies-info {
+    color: var(--text-light);
+    font-size: 0.95em;
+    margin-bottom: 20px;
+    line-height: 1.5;
+    text-align: center;
+    font-weight: 500;
+}
+
+.allergies-category {
+    margin-bottom: 25px;
+    padding: 15px;
+    background: rgba(116, 185, 255, 0.1);
+    border-radius: 10px;
+    border-left: 3px solid #74b9ff;
+}
+
+.allergies-category h5 {
+    color: var(--text-dark);
+    font-size: 1.1em;
+    font-weight: 600;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.allergies-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 15px;
+}
+
+.allergy-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    padding: 12px 15px;
+    border-radius: 10px;
+    transition: var(--transition);
+    font-size: 0.9em;
+    background: rgba(255,255,255,0.8);
+    border: 2px solid transparent;
+}
+
+.allergy-item:hover {
+    background-color: rgba(102, 126, 234, 0.15);
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.allergy-item input[type="checkbox"]:checked + span {
+    color: var(--danger-color);
+    font-weight: 600;
+}
+
+.allergy-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    accent-color: var(--danger-color);
+}
+
+.allergy-item span {
+    color: #333;
+    font-weight: 500;
+    line-height: 1.2;
+}
+
+/* Allergies personnalisées */
+.custom-allergies {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(255, 235, 59, 0.1);
+    border-radius: 10px;
+    border-left: 3px solid #fdcb6e;
+}
+
+.custom-checkbox {
+    margin-bottom: 15px;
+    background: rgba(253, 203, 110, 0.2) !important;
+    border: 2px solid #fdcb6e;
+}
+
+.custom-input-container {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 15px;
+}
+
+.custom-input-container input {
+    flex: 1;
+    padding: 10px 12px;
+    border: 2px solid #ddd;
+    border-radius: 8px;
+    font-size: 0.9em;
+}
+
+.custom-input-container input:focus {
+    border-color: #fdcb6e;
+    outline: none;
+}
+
+.btn-add-custom {
+    padding: 10px 20px;
+    background: #fdcb6e;
+    color: var(--text-dark);
+    border: none;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+}
+
+.btn-add-custom:hover {
+    background: #e17055;
+    color: white;
+}
+
+.custom-allergies-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.custom-allergy-tag {
+    background: #ff7675;
+    color: white;
+    padding: 5px 12px;
+    border-radius: 15px;
+    font-size: 0.8em;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.custom-allergy-tag .remove-btn {
+    background: none;
+    border: none;
+    color: white;
+    cursor: pointer;
+    padding: 0;
+    font-size: 1.1em;
+}
+
+/* Zone remarques */
+.other-allergies {
+    margin: 20px 0;
+    padding: 15px;
+    background: rgba(156, 136, 255, 0.1);
+    border-radius: 10px;
+    border-left: 3px solid #a29bfe;
+}
+
+.other-allergies label {
+    display: block;
+    margin-bottom: 10px;
+    color: var(--text-dark);
+    font-weight: 600;
+    font-size: 1em;
+}
+
+.other-allergies textarea {
+    width: 100%;
+    min-height: 100px;
+    padding: 15px;
+    border: 2px solid #ddd;
+    border-radius: 10px;
+    resize: vertical;
+    font-family: inherit;
+    font-size: 0.9em;
+    transition: var(--transition);
+    line-height: 1.4;
+}
+
+.other-allergies textarea:focus {
+    outline: none;
+    border-color: #a29bfe;
+}
+
+.other-allergies textarea::placeholder {
+    color: #b2bec3;
+}
+
+/* Actions */
+.allergies-actions {
+    text-align: center;
+    margin-top: 20px;
+}
+
+.btn-clear {
+    padding: 10px 25px;
+    background: #636e72;
+    color: white;
+    border: none;
+    border-radius: 20px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: var(--transition);
+    font-size: 0.9em;
+}
+
+.btn-clear:hover {
+    background: #2d3436;
+}
+
+/* Footer du panier */
+.cart-footer {
+    border-top: 2px solid var(--light-color);
+    padding-top: 20px;
+}
+
+.cart-total {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.cart-total span {
+    font-size: 1.4em;
+    font-weight: 700;
+    color: var(--text-dark);
+}
+
+#cartTotal {
+    color: var(--success-color);
+}
+
+#orderBtn {
+    width: 100%;
+    background: linear-gradient(45deg, var(--success-color), #00b894);
+    color: white;
+    border: none;
+    padding: 16px 30px;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    transition: var(--transition);
+    font-weight: 700;
+    font-size: 1.1em;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+#orderBtn:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(16, 172, 132, 0.3);
+}
+
+#orderBtn:disabled {
+    background: #ddd;
+    cursor: not-allowed;
+    transform: none;
+}
+
+/* Modales */
+.modal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.7);
+    z-index: 1000;
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: white;
+    padding: 30px;
+    border-radius: var(--border-radius);
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+}
+
+.modal-content h3 {
+    margin-bottom: 20px;
+    color: var(--text-dark);
+    text-align: center;
+    font-size: 1.5em;
+}
+
+/* Styles pour l'affichage des allergies dans la modal */
+.order-allergies {
+    background: rgba(255, 243, 205, 0.8);
+    border: 1px solid #ffc107;
+    border-radius: 8px;
+    padding: 15px;
+    margin: 15px 0;
+}
+
+.order-allergies h4 {
+    color: #856404;
+    margin-bottom: 10px;
+    font-size: 1em;
+    font-weight: 600;
+}
+
+.order-allergies p {
+    margin: 5px 0;
+    color: #856404;
+    font-size: 0.9em;
+    line-height: 1.4;
+}
+
+.order-allergies strong {
+    font-weight: 600;
+}
+
+.order-summary-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.order-total {
+    display: flex;
+    justify-content: space-between;
+    font-weight: 700;
+    font-size: 1.2em;
+    margin-top: 15px;
+    padding-top: 15px;
+    border-top: 2px solid var(--primary-color);
+    color: var(--text-dark);
+}
+
+.form-actions {
+    display: flex;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.btn {
+    padding: 12px 25px;
+    border: none;
+    border-radius: var(--border-radius);
+    cursor: pointer;
+    font-weight: 600;
+    transition: var(--transition);
+    flex: 1;
+    text-align: center;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--secondary-color);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: #ddd;
+    color: var(--text-dark);
+}
+
+.btn-secondary:hover {
+    background: #bbb;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+    .container {
+        padding: 15px;
+    }
+
+    .menu-items {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
+    .allergies-grid {
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 8px;
+    }
+
+    .cart-section {
+        padding: 20px;
+    }
+
+    .allergies-section {
+        padding: 20px;
+    }
+
+    .categories {
+        gap: 8px;
+    }
+
+    .category-btn {
+        padding: 10px 16px;
+        font-size: 0.85em;
+    }
+}
+
+@media (max-width: 480px) {
+    .client-header h1 {
+        font-size: 2rem;
+    }
+
+    .allergies-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .custom-input-container {
+        flex-direction: column;
+    }
+
+    .form-actions {
+        flex-direction: column;
+    }
+}
+
+/* Animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.menu-item {
+    animation: fadeIn 0.4s ease-out;
+}
+
+/* États de loading */
+.loading {
+    opacity: 0.6;
+    pointer-events: none;
+}
+
+/* Notifications */
+.notification {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--success-color);
+    color: white;
+    padding: 15px 20px;
+    border-radius: var(--border-radius);
+    box-shadow: var(--box-shadow);
+    z-index: 1001;
+    animation: fadeIn 0.3s ease-out;
+}
+
+.notification.error {
+    background: var(--danger-color);
+}
+
+/* Styles pour les sections séparées du menu */
+.menu-section {
+    background: white;
+    border-radius: var(--border-radius);
+    padding: 25px;
+    margin-bottom: 25px;
+    box-shadow: var(--box-shadow);
+    border-left: 5px solid var(--primary-color);
+}
+
+.menu-section-title {
+    font-size: 1.5em;
+    font-weight: 700;
+    color: var(--primary-color);
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 2px solid var(--light-color);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.menu-section-title::before {
+    content: '';
+    width: 4px;
+    height: 25px;
+    background: linear-gradient(45deg, var(--primary-color), var(--secondary-color));
+    border-radius: 2px;
+}
+
+.menu-section-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+}
+
+/* Couleurs spécifiques par section */
+.menu-section.entree {
+    border-left-color: #e17055;
+}
+
+.menu-section.entree .menu-section-title {
+    color: #e17055;
+}
+
+.menu-section.entree .menu-section-title::before {
+    background: linear-gradient(45deg, #e17055, #d63031);
+}
+
+.menu-section.plat {
+    border-left-color: #00b894;
+}
+
+.menu-section.plat .menu-section-title {
+    color: #00b894;
+}
+
+.menu-section.plat .menu-section-title::before {
+    background: linear-gradient(45deg, #00b894, #00a085);
+}
+
+.menu-section.accompagnement {
+    border-left-color: #fdcb6e;
+}
+
+.menu-section.accompagnement .menu-section-title {
+    color: #e84393;
+}
+
+.menu-section.accompagnement .menu-section-title::before {
+    background: linear-gradient(45deg, #fdcb6e, #e84393);
+}
+
+.menu-section.dessert {
+    border-left-color: #a29bfe;
+}
+
+.menu-section.dessert .menu-section-title {
+    color: #a29bfe;
+}
+
+.menu-section.dessert .menu-section-title::before {
+    background: linear-gradient(45deg, #a29bfe, #6c5ce7);
+}
+
+.menu-section.boisson_soft {
+    border-left-color: #0984e3;
+}
+
+.menu-section.boisson_soft .menu-section-title {
+    color: #0984e3;
+}
+
+.menu-section.boisson_soft .menu-section-title::before {
+    background: linear-gradient(45deg, #0984e3, #74b9ff);
+}
+
+.menu-section.boisson_chaude {
+    border-left-color: #d63031;
+}
+
+.menu-section.boisson_chaude .menu-section-title {
+    color: #d63031;
+}
+
+.menu-section.boisson_chaude .menu-section-title::before {
+    background: linear-gradient(45deg, #d63031, #e17055);
+}
+
+.menu-section.boisson_alcool {
+    border-left-color: #e84393;
+}
+
+.menu-section.boisson_alcool .menu-section-title {
+    color: #e84393;
+}
+
+.menu-section.boisson_alcool .menu-section-title::before {
+    background: linear-gradient(45deg, #e84393, #fd79a8);
+}
+
+/* Masquer les anciens filtres de catégories */
+.categories {
+    display: none;
+}
