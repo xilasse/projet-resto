@@ -5,17 +5,14 @@
   "main": "server/index.js",
   "scripts": {
     "start": "cd server && node index.js",
-    "server": "cd server && npm start",
-    "client": "cd client && npm start",
-    "build": "cd server && npm install",
-    "install-all": "npm install && cd server && npm install && cd ../client && npm install"
+    "build": "cd server && npm install --omit=dev",
+    "postinstall": "cd server && npm install --omit=dev"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
   },
-  "devDependencies": {
-    "concurrently": "^8.2.2"
-  },
+  "dependencies": {},
   "keywords": ["restaurant", "qr-code", "stock-management", "orders"],
   "author": "",
   "license": "MIT"

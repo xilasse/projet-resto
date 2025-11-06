@@ -1,0 +1,11 @@
+[phases.setup]
+nixPkgs = ["nodejs", "npm"]
+
+[phases.install]
+cmd = "cd server && npm install --omit=dev"
+
+[phases.build]
+cmd = "echo 'Build phase completed'"
+
+[start]
+cmd = "cd server && node index.js"
