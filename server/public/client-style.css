@@ -905,6 +905,7 @@ body {
     background: linear-gradient(45deg, #e84393, #fd79a8);
 }
 
+
 /* Masquer les anciens filtres de catégories */
 .categories {
     display: none;

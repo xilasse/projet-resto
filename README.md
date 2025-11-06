@@ -1,175 +1,69 @@
-# Application de Gestion de Restaurant
+# Restaurant Management App
 
-Une application complète pour gérer un restaurant avec QR codes, gestion des stocks, et système de commandes.
+Application complète de gestion de restaurant avec QR codes, gestion des stocks et système de commandes.
 
-## Fonctionnalités
+## 🚀 Déploiement sur Railway
 
-### 🍽️ Gestion du Menu
-- Ajout/modification/suppression de plats
-- Catégorisation des plats (entrées, plats, desserts, boissons)
-- Gestion des prix et descriptions
-- Upload d'images pour les plats
+Cette application est configurée pour être déployée sur Railway.
 
-### 📱 Interface Client (QR Code)
-- Menu interactif accessible via QR code
-- Filtrage par catégories
-- Panier de commandes
-- Système de paiement intégré (simulation)
+### Variables d'environnement nécessaires
 
-### 🗺️ Gestion des Tables
-- Disposition visuelle des tables
-- Génération automatique de QR codes
-- Déplacement des tables par glisser-déposer
-- Statut des tables (libre/occupée)
+- `PORT`: Port du serveur (automatiquement défini par Railway)
+- `NODE_ENV`: Environnement (production)
 
-### 📋 Gestion des Commandes
-- Suivi en temps réel des commandes
-- Workflow de préparation (attente → préparation → prête → servie)
-- Affichage par table
-
-### 📊 Gestion des Stocks
-- Suivi automatique des stocks
-- Alertes de stock faible
-- Ajustements manuels des quantités
-- Historique des mouvements
-
-## Structure du Projet
+### 📁 Structure du projet
 
 ```
-restaurant-management-app/
-├── server/                 # Backend Node.js
-│   ├── index.js           # Serveur principal
-│   ├── package.json       # Dépendances backend
-│   └── public/            # Fichiers statiques
-├── client/                # Frontend
-│   ├── html/              # Fichiers HTML
-│   │   ├── index.html     # Interface d'administration
-│   │   └── client-menu.html # Menu client (QR code)
-│   ├── css/               # Styles
-│   │   ├── style.css      # Styles administration
-│   │   └── client-style.css # Styles client
-│   ├── js/                # JavaScript
-│   │   ├── app.js         # Application principale
-│   │   └── client-menu.js # Application client
-│   └── assets/            # Images et ressources
-└── package.json           # Scripts de gestion du projet
+projet-resto/
+├── server/           # Backend Node.js/Express
+│   ├── index.js      # Point d'entrée principal
+│   ├── public/       # Fichiers statiques (HTML, CSS, JS client)
+│   └── package.json  # Dépendances backend
+├── client/           # Assets client (HTML, CSS, JS)
+└── package.json      # Configuration principale
 ```
 
-## Installation
+### 🛠️ Technologies utilisées
 
-1. **Cloner le projet**
-   ```bash
-   git clone [url-du-repo]
-   cd restaurant-management-app
-   ```
+- **Backend**: Node.js, Express.js, SQLite3
+- **Frontend**: HTML5, CSS3, JavaScript Vanilla
+- **Base de données**: SQLite (intégrée)
+- **QR Codes**: qrcode library
+- **Paiements**: Stripe integration
 
-2. **Installer les dépendances**
-   ```bash
-   npm run install-all
-   ```
+### 📋 Fonctionnalités
 
-3. **Démarrer l'application**
-   ```bash
-   npm start
-   ```
+- ✅ Gestion des tables avec QR codes
+- ✅ Menu dynamique par catégories
+- ✅ Système de commandes en temps réel
+- ✅ Gestion des allergies détaillée
+- ✅ Suivi des stocks et ingrédients
+- ✅ Interface client responsive
+- ✅ Tableau de bord administrateur
 
-   Ou démarrer séparément :
-   ```bash
-   # Terminal 1 - Backend
-   npm run server
+### 🔧 Installation locale
 
-   # Terminal 2 - Frontend (si nécessaire)
-   npm run client
-   ```
+```bash
+# Installer toutes les dépendances
+npm run install-all
 
-## Utilisation
+# Démarrer le serveur de développement
+npm start
+```
 
-### Interface d'Administration
-Accédez à `http://localhost:5000/client/html/index.html`
+### 🌐 Déploiement
 
-1. **Gestion du Menu** : Ajoutez vos plats avec prix, descriptions et images
-2. **Disposition des Tables** : Créez et positionnez vos tables
-3. **Suivi des Commandes** : Gérez le workflow des commandes
-4. **Gestion des Stocks** : Surveillez et ajustez vos stocks
+1. Connectez votre repository à Railway
+2. Railway détectera automatiquement la configuration
+3. Les variables d'environnement seront configurées automatiquement
+4. Le déploiement se lance automatiquement
 
-### Interface Client (QR Code)
-1. Créez une table dans l'interface d'administration
-2. Double-cliquez sur la table pour afficher son QR code
-3. Les clients scannent le QR code pour accéder au menu
-4. URL directe : `http://localhost:5000/menu/[numéro-table]`
+### 📱 Utilisation
 
-## Technologies Utilisées
+1. **Admin**: Accédez à `/` pour la gestion
+2. **Client**: Scannez le QR code de votre table
+3. **Commandes**: Interface temps réel pour les commandes
 
-### Backend
-- **Node.js** avec Express.js
-- **SQLite** pour la base de données
-- **QRCode** pour la génération des QR codes
-- **CORS** pour les requêtes cross-origin
+---
 
-### Frontend
-- **HTML5** / **CSS3** / **JavaScript Vanilla**
-- **CSS Grid** et **Flexbox** pour les layouts
-- **Fetch API** pour les requêtes HTTP
-- **Responsive Design** pour mobile et desktop
-
-## API Endpoints
-
-### Menu
-- `GET /api/menu` - Récupérer tous les plats
-- `POST /api/menu` - Ajouter un plat
-- `PUT /api/menu/:id` - Modifier un plat
-- `DELETE /api/menu/:id` - Supprimer un plat
-
-### Tables
-- `GET /api/tables` - Récupérer toutes les tables
-- `POST /api/tables` - Créer une table
-- `PUT /api/tables/:id/position` - Mettre à jour la position
-- `GET /api/table/:tableNumber` - Informations d'une table
-
-### Commandes
-- `GET /api/orders` - Récupérer toutes les commandes
-- `POST /api/orders` - Créer une commande
-- `PUT /api/orders/:id/status` - Mettre à jour le statut
-
-## Base de Données
-
-L'application utilise SQLite avec les tables suivantes :
-
-- **tables** : Informations des tables et QR codes
-- **menu_items** : Plats du menu avec stocks
-- **orders** : Commandes des clients
-- **stock_movements** : Historique des mouvements de stock
-
-## Fonctionnalités Avancées
-
-### Gestion des Stocks
-- Décompte automatique lors des commandes
-- Alertes visuelles (rouge = rupture, orange = stock faible)
-- Historique des mouvements
-
-### Interface Responsive
-- Optimisé pour tablettes et smartphones
-- Navigation tactile pour les serveurs
-- Interface client adaptée aux mobiles
-
-### Système de Paiement
-- Simulation de différentes méthodes de paiement
-- Intégration future possible avec Stripe
-- Confirmation et suivi des paiements
-
-## Développement Futur
-
-- [ ] Intégration Stripe pour vrais paiements
-- [ ] Notifications push pour les serveurs
-- [ ] Rapports et statistiques
-- [ ] Gestion multi-restaurant
-- [ ] Application mobile native
-- [ ] Impression des tickets de caisse
-
-## Support
-
-Pour toute question ou problème, consultez les logs du serveur ou créez une issue dans le repository.
-
-## Licence
-
-MIT License - Voir le fichier LICENSE pour plus de détails.
+*Déployé avec ❤️ sur [Railway](https://railway.app)*

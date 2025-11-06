@@ -350,7 +350,7 @@ app.put('/api/orders/:id/status', (req, res) => {
 // Route pour servir le menu aux clients (via QR code)
 app.get('/menu/:tableNumber', (req, res) => {
   const path = require('path');
-  res.sendFile(path.join(__dirname, '..', 'client', 'html', 'client-menu.html'));
+  res.sendFile(path.join(__dirname, 'public', 'client-menu.html'));
 });
 
 // Route pour obtenir les informations d'une table
