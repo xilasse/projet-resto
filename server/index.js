@@ -16,6 +16,7 @@ app.use('/client', express.static('../client'));
 const db = new sqlite3.Database('restaurant.db');
 
 db.serialize(() => {
+  // Créer les tables principales d'abord
   db.run(`CREATE TABLE IF NOT EXISTS rooms (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -36,27 +37,6 @@ db.serialize(() => {
     FOREIGN KEY (room_id) REFERENCES rooms (id)
   )`);
 
-  // Migration : ajouter la colonne room_id si elle n'existe pas
-  db.run(`ALTER TABLE tables ADD COLUMN room_id INTEGER`, (err) => {
-    // Ignore l'erreur si la colonne existe déjà
-    if (err && !err.message.includes('duplicate column name')) {
-      console.error('Erreur migration:', err.message);
-    }
-  });
-
-  // Migration : ajouter les colonnes d'allergies à la table orders
-  db.run(`ALTER TABLE orders ADD COLUMN allergies TEXT`, (err) => {
-    if (err && !err.message.includes('duplicate column name')) {
-      console.error('Erreur migration allergies:', err.message);
-    }
-  });
-
-  db.run(`ALTER TABLE orders ADD COLUMN other_allergies TEXT`, (err) => {
-    if (err && !err.message.includes('duplicate column name')) {
-      console.error('Erreur migration other_allergies:', err.message);
-    }
-  });
-
   db.run(`CREATE TABLE IF NOT EXISTS menu_items (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -69,6 +49,7 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
 
+  // Créer la table orders avec toutes les colonnes dès le début
   db.run(`CREATE TABLE IF NOT EXISTS orders (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     table_id INTEGER,
@@ -81,6 +62,36 @@ db.serialize(() => {
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (table_id) REFERENCES tables (id)
   )`);
+
+  // Migrations seulement après création des tables
+  db.run(`PRAGMA table_info(tables)`, [], (err, rows) => {
+    if (!err) {
+      // Vérifier si room_id existe avant de l'ajouter
+      db.all(`PRAGMA table_info(tables)`, [], (err, columns) => {
+        if (!err && columns) {
+          const hasRoomId = columns.some(col => col.name === 'room_id');
+          if (!hasRoomId) {
+            db.run(`ALTER TABLE tables ADD COLUMN room_id INTEGER`);
+          }
+        }
+      });
+    }
+  });
+
+  // Vérifier et ajouter les colonnes d'allergies si nécessaires
+  db.all(`PRAGMA table_info(orders)`, [], (err, columns) => {
+    if (!err && columns) {
+      const hasAllergies = columns.some(col => col.name === 'allergies');
+      const hasOtherAllergies = columns.some(col => col.name === 'other_allergies');
+
+      if (!hasAllergies) {
+        db.run(`ALTER TABLE orders ADD COLUMN allergies TEXT`);
+      }
+      if (!hasOtherAllergies) {
+        db.run(`ALTER TABLE orders ADD COLUMN other_allergies TEXT`);
+      }
+    }
+  });
 
   db.run(`CREATE TABLE IF NOT EXISTS stock_movements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
