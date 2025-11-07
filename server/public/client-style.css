@@ -722,6 +722,16 @@ body {
         padding: 20px;
     }
 
+    .menu-section {
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+
+    .menu-section-items {
+        grid-template-columns: 1fr;
+        gap: 15px;
+    }
+
     .categories {
         gap: 8px;
     }
@@ -792,6 +802,9 @@ body {
     margin-bottom: 25px;
     box-shadow: var(--box-shadow);
     border-left: 5px solid var(--primary-color);
+    /* Même largeur que la section panier */
+    width: 100%;
+    max-width: none;
 }
 
 .menu-section-title {
@@ -818,8 +831,10 @@ body {
 
 .menu-section-items {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
     gap: 20px;
+    /* Assurer que les éléments prennent toute la largeur disponible */
+    width: 100%;
 }
 
 /* Couleurs spécifiques par section */
