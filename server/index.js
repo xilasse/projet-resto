@@ -13,6 +13,37 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 app.use('/client', express.static('../client'));
 
+// Route simple pour favicon
+app.get('/favicon.ico', (req, res) => {
+  res.status(204).end();
+});
+
+// Route de debug pour vérifier la base de données
+app.get('/api/debug', (req, res) => {
+  db.all('SELECT COUNT(*) as menu_count FROM menu_items', (err1, menuResult) => {
+    db.all('SELECT COUNT(*) as table_count FROM tables', (err2, tableResult) => {
+      db.all('SELECT COUNT(*) as room_count FROM rooms', (err3, roomResult) => {
+        db.all('SELECT * FROM menu_items LIMIT 5', (err4, sampleMenu) => {
+          res.json({
+            database_status: {
+              menu_items: menuResult[0]?.menu_count || 0,
+              tables: tableResult[0]?.table_count || 0,
+              rooms: roomResult[0]?.room_count || 0
+            },
+            sample_menu: sampleMenu || [],
+            errors: {
+              menu_error: err1?.message,
+              table_error: err2?.message,
+              room_error: err3?.message,
+              sample_error: err4?.message
+            }
+          });
+        });
+      });
+    });
+  });
+});
+
 const db = new sqlite3.Database('restaurant.db');
 
 db.serialize(() => {

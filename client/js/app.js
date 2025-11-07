@@ -150,13 +150,13 @@ class RestaurantApp {
 
         // Définir l'ordre des sections
         const sectionsOrder = [
-            { category: 'entree', title: 'Entrées' },
-            { category: 'plat', title: 'Plats Principaux' },
-            { category: 'accompagnement', title: 'Accompagnements' },
-            { category: 'dessert', title: 'Desserts' },
-            { category: 'boisson_soft', title: 'Boissons Froides' },
-            { category: 'boisson_chaude', title: 'Boissons Chaudes' },
-            { category: 'boisson_alcool', title: 'Boissons Alcoolisées' }
+            { category: 'aperitif', title: '🍸 Apéritifs' },
+            { category: 'entree', title: '🥗 Entrées' },
+            { category: 'plat', title: '🍽️ Plats Principaux' },
+            { category: 'dessert', title: '🍰 Desserts' },
+            { category: 'boisson_froide', title: '🧊 Boissons Froides' },
+            { category: 'boisson_chaude', title: '☕ Boissons Chaudes' },
+            { category: 'boisson_alcoolise', title: '🍷 Boissons Alcoolisées' }
         ];
 
         sectionsOrder.forEach(section => {
