@@ -358,6 +358,52 @@ app.put('/api/orders/:id/status', (req, res) => {
   );
 });
 
+// Route pour la page d'accueil
+app.get('/', (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+        <title>Restaurant Management</title>
+        <meta charset="utf-8">
+        <style>
+            body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
+            .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+            h1 { color: #333; text-align: center; }
+            .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 30px; }
+            .link-card { background: #007bff; color: white; padding: 20px; border-radius: 8px; text-decoration: none; text-align: center; transition: background 0.3s; }
+            .link-card:hover { background: #0056b3; color: white; text-decoration: none; }
+            .status { background: #28a745; color: white; padding: 10px; border-radius: 5px; text-align: center; margin-bottom: 20px; }
+        </style>
+    </head>
+    <body>
+        <div class="container">
+            <div class="status">🟢 Serveur en ligne - Port ${PORT}</div>
+            <h1>🍽️ Système de Gestion Restaurant</h1>
+            <div class="links">
+                <a href="/client" class="link-card">
+                    <h3>📱 Interface Client</h3>
+                    <p>Application de gestion des tables et commandes</p>
+                </a>
+                <a href="/api/tables" class="link-card">
+                    <h3>🪑 API Tables</h3>
+                    <p>Visualiser les tables disponibles</p>
+                </a>
+                <a href="/api/menu" class="link-card">
+                    <h3>📋 API Menu</h3>
+                    <p>Voir le menu complet du restaurant</p>
+                </a>
+                <a href="/api/orders" class="link-card">
+                    <h3>📦 API Commandes</h3>
+                    <p>Gérer les commandes en cours</p>
+                </a>
+            </div>
+        </div>
+    </body>
+    </html>
+  `);
+});
+
 // Route pour servir le menu aux clients (via QR code)
 app.get('/menu/:tableNumber', (req, res) => {
   const path = require('path');
