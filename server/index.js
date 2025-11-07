@@ -413,6 +413,141 @@ app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, '../client/html', 'index.html'));
 });
 
+// Route pour initialiser la base avec un menu d'exemple
+app.post('/api/init-menu', (req, res) => {
+  const menuItems = [
+    // Apéritifs
+    { name: "Kir Royal", description: "Champagne et crème de cassis", price: 8.50, category: "aperitif" },
+    { name: "Cocktail Maison", description: "Rhum, fruits de la passion et menthe", price: 9.00, category: "aperitif" },
+
+    // Entrées
+    { name: "Salade César", description: "Salade verte, parmesan, croûtons, sauce césar", price: 12.00, category: "entree" },
+    { name: "Foie Gras Mi-Cuit", description: "Foie gras maison, chutney de figues", price: 18.00, category: "entree" },
+    { name: "Carpaccio de Bœuf", description: "Lamelles de bœuf, roquette, parmesan", price: 14.50, category: "entree" },
+
+    // Plats
+    { name: "Entrecôte Grillée", description: "300g avec frites maison et salade", price: 24.00, category: "plat" },
+    { name: "Saumon Grillé", description: "Filet de saumon, légumes de saison", price: 22.00, category: "plat" },
+    { name: "Risotto aux Champignons", description: "Risotto crémeux, champignons de saison", price: 18.50, category: "plat" },
+    { name: "Magret de Canard", description: "Magret laqué au miel, gratin dauphinois", price: 26.00, category: "plat" },
+
+    // Desserts
+    { name: "Tiramisu Maison", description: "Tiramisu traditionnel aux amaretti", price: 7.50, category: "dessert" },
+    { name: "Tarte Tatin", description: "Tarte aux pommes caramélisées, glace vanille", price: 8.00, category: "dessert" },
+    { name: "Mousse au Chocolat", description: "Mousse onctueuse, chantilly", price: 6.50, category: "dessert" },
+
+    // Boissons froides
+    { name: "Coca-Cola", description: "33cl", price: 3.50, category: "boisson_froide" },
+    { name: "Jus d'Orange Frais", description: "Pressé minute", price: 4.50, category: "boisson_froide" },
+    { name: "Eau Minérale", description: "50cl", price: 2.50, category: "boisson_froide" },
+
+    // Boissons chaudes
+    { name: "Café Expresso", description: "Café italien", price: 2.50, category: "boisson_chaude" },
+    { name: "Thé Earl Grey", description: "Thé anglais bergamote", price: 3.00, category: "boisson_chaude" },
+    { name: "Chocolat Chaud", description: "Chocolat chaud maison, chantilly", price: 4.50, category: "boisson_chaude" },
+
+    // Boissons alcoolisées
+    { name: "Vin Rouge", description: "Côtes du Rhône, verre", price: 5.50, category: "boisson_alcoolise" },
+    { name: "Vin Blanc", description: "Sancerre, verre", price: 6.00, category: "boisson_alcoolise" },
+    { name: "Bière Pression", description: "33cl", price: 4.50, category: "boisson_alcoolise" }
+  ];
+
+  let completed = 0;
+  let errors = 0;
+
+  menuItems.forEach((item, index) => {
+    db.run(
+      'INSERT INTO menu_items (name, description, price, category, stock_quantity, image_url) VALUES (?, ?, ?, ?, ?, ?)',
+      [item.name, item.description, item.price, item.category, 50, ''],
+      function(err) {
+        completed++;
+        if (err) {
+          errors++;
+          console.log(`Erreur pour ${item.name}:`, err.message);
+        }
+
+        if (completed === menuItems.length) {
+          res.json({
+            success: true,
+            message: `Menu initialisé: ${menuItems.length - errors} plats ajoutés, ${errors} erreurs`,
+            total: menuItems.length,
+            added: menuItems.length - errors,
+            errors: errors
+          });
+        }
+      }
+    );
+  });
+});
+
+// Route GET pour initialiser le menu facilement
+app.get('/api/init-menu', (req, res) => {
+  // Vérifier s'il y a déjà des éléments
+  db.get('SELECT COUNT(*) as count FROM menu_items', (err, row) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+
+    if (row.count > 0) {
+      res.json({
+        message: `Menu déjà présent: ${row.count} éléments trouvés. Utilisez POST pour forcer la réinitialisation.`,
+        count: row.count
+      });
+    } else {
+      // Rediriger vers POST pour ajouter le menu
+      res.redirect(307, '/api/init-menu');
+    }
+  });
+});
+
+// Route pour initialiser des tables d'exemple
+app.post('/api/init-tables', (req, res) => {
+  // D'abord créer une salle par défaut
+  db.run(
+    'INSERT OR IGNORE INTO rooms (name, width, height, color) VALUES (?, ?, ?, ?)',
+    ['Salle Principale', 600, 400, '#f8f9fa'],
+    function(err) {
+      if (err) {
+        res.status(500).json({ error: err.message });
+        return;
+      }
+
+      const roomId = this.lastID || 1;
+      let completed = 0;
+      let errors = 0;
+      const totalTables = 10;
+
+      // Créer 10 tables
+      for (let i = 1; i <= totalTables; i++) {
+        const QRCode = require('qrcode');
+        const tableUrl = `${req.protocol}://${req.get('host')}/menu/${i}`;
+
+        QRCode.toDataURL(tableUrl, (err, qrCode) => {
+          db.run(
+            'INSERT OR IGNORE INTO tables (table_number, qr_code, x_position, y_position, room_id, status) VALUES (?, ?, ?, ?, ?, ?)',
+            [i, qrCode || '', Math.random() * 500, Math.random() * 300, roomId, 'libre'],
+            function(err) {
+              completed++;
+              if (err) errors++;
+
+              if (completed === totalTables) {
+                res.json({
+                  success: true,
+                  message: `Tables initialisées: ${totalTables - errors} tables créées`,
+                  total: totalTables,
+                  added: totalTables - errors,
+                  errors: errors
+                });
+              }
+            }
+          );
+        });
+      }
+    }
+  );
+});
+
 // Route pour servir le menu aux clients (via QR code)
 app.get('/menu/:tableNumber', (req, res) => {
   const path = require('path');
