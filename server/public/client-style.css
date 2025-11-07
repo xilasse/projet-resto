@@ -803,7 +803,9 @@ body {
     border-bottom: 2px solid var(--light-color);
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 10px;
+    text-align: center;
 }
 
 .menu-section-title::before {
@@ -821,6 +823,18 @@ body {
 }
 
 /* Couleurs spécifiques par section */
+.menu-section.aperitif {
+    border-left-color: #f093fb;
+}
+
+.menu-section.aperitif .menu-section-title {
+    color: #f093fb;
+}
+
+.menu-section.aperitif .menu-section-title::before {
+    background: linear-gradient(45deg, #f093fb, #f5576c);
+}
+
 .menu-section.entree {
     border-left-color: #e17055;
 }
@@ -845,18 +859,6 @@ body {
     background: linear-gradient(45deg, #00b894, #00a085);
 }
 
-.menu-section.accompagnement {
-    border-left-color: #fdcb6e;
-}
-
-.menu-section.accompagnement .menu-section-title {
-    color: #e84393;
-}
-
-.menu-section.accompagnement .menu-section-title::before {
-    background: linear-gradient(45deg, #fdcb6e, #e84393);
-}
-
 .menu-section.dessert {
     border-left-color: #a29bfe;
 }
@@ -869,15 +871,15 @@ body {
     background: linear-gradient(45deg, #a29bfe, #6c5ce7);
 }
 
-.menu-section.boisson_soft {
+.menu-section.boisson_froide {
     border-left-color: #0984e3;
 }
 
-.menu-section.boisson_soft .menu-section-title {
+.menu-section.boisson_froide .menu-section-title {
     color: #0984e3;
 }
 
-.menu-section.boisson_soft .menu-section-title::before {
+.menu-section.boisson_froide .menu-section-title::before {
     background: linear-gradient(45deg, #0984e3, #74b9ff);
 }
 
@@ -893,15 +895,15 @@ body {
     background: linear-gradient(45deg, #d63031, #e17055);
 }
 
-.menu-section.boisson_alcool {
+.menu-section.boisson_alcoolise {
     border-left-color: #e84393;
 }
 
-.menu-section.boisson_alcool .menu-section-title {
+.menu-section.boisson_alcoolise .menu-section-title {
     color: #e84393;
 }
 
-.menu-section.boisson_alcool .menu-section-title::before {
+.menu-section.boisson_alcoolise .menu-section-title::before {
     background: linear-gradient(45deg, #e84393, #fd79a8);
 }
 

@@ -242,13 +242,13 @@ class ClientMenuApp {
 
     getCategoryLabel(category) {
         const labels = {
-            'entree': 'Entrées',
-            'plat': 'Plats principaux',
-            'accompagnement': 'Accompagnements',
-            'dessert': 'Desserts',
-            'boisson_soft': 'Boissons froides',
-            'boisson_chaude': 'Boissons chaudes',
-            'boisson_alcool': 'Boissons alcoolisées'
+            'aperitif': '🍸 Apéritifs',
+            'entree': '🥗 Entrées',
+            'plat': '🍽️ Plats principaux',
+            'dessert': '🍰 Desserts',
+            'boisson_froide': '🧊 Boissons froides',
+            'boisson_chaude': '☕ Boissons chaudes',
+            'boisson_alcoolise': '🍷 Boissons alcoolisées'
         };
         return labels[category] || category;
     }
@@ -260,13 +260,13 @@ class ClientMenuApp {
 
         // Définir l'ordre des sections
         const sectionsOrder = [
-            { category: 'entree', title: 'Entrées' },
-            { category: 'plat', title: 'Plats Principaux' },
-            { category: 'accompagnement', title: 'Accompagnements' },
-            { category: 'dessert', title: 'Desserts' },
-            { category: 'boisson_soft', title: 'Boissons Froides' },
-            { category: 'boisson_chaude', title: 'Boissons Chaudes' },
-            { category: 'boisson_alcool', title: 'Boissons Alcoolisées' }
+            { category: 'aperitif', title: '🍸 Apéritifs' },
+            { category: 'entree', title: '🥗 Entrées' },
+            { category: 'plat', title: '🍽️ Plats Principaux' },
+            { category: 'dessert', title: '🍰 Desserts' },
+            { category: 'boisson_froide', title: '🧊 Boissons Froides' },
+            { category: 'boisson_chaude', title: '☕ Boissons Chaudes' },
+            { category: 'boisson_alcoolise', title: '🍷 Boissons Alcoolisées' }
         ];
 
         sectionsOrder.forEach(section => {
