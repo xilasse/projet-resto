@@ -217,6 +217,50 @@ app.get('/api/menu', (req, res) => {
   });
 });
 
+// API pour obtenir les catégories de menu disponibles
+app.get('/api/menu/categories', (req, res) => {
+  const categories = [
+    { id: 'aperitif', label: 'Apéritifs' },
+    { id: 'entree', label: 'Entrées' },
+    { id: 'plat', label: 'Plats' },
+    { id: 'dessert', label: 'Desserts' },
+    { id: 'boisson_froide', label: 'Boissons froides' },
+    { id: 'boisson_chaude', label: 'Boissons chaudes' },
+    { id: 'boisson_alcoolise', label: 'Boissons alcoolisées' }
+  ];
+  res.json(categories);
+});
+
+// API pour obtenir le menu groupé par catégories
+app.get('/api/menu/by-category', (req, res) => {
+  db.all('SELECT * FROM menu_items WHERE is_available = 1 ORDER BY category, name', (err, rows) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+      return;
+    }
+
+    // Grouper par catégories
+    const menuByCategory = {
+      aperitif: [],
+      entree: [],
+      plat: [],
+      dessert: [],
+      boisson_froide: [],
+      boisson_chaude: [],
+      boisson_alcoolise: []
+    };
+
+    rows.forEach(item => {
+      const category = item.category || 'plat'; // catégorie par défaut
+      if (menuByCategory[category]) {
+        menuByCategory[category].push(item);
+      }
+    });
+
+    res.json(menuByCategory);
+  });
+});
+
 app.post('/api/menu', (req, res) => {
   const { name, description, price, category, stockQuantity, imageUrl } = req.body;
 
@@ -358,50 +402,15 @@ app.put('/api/orders/:id/status', (req, res) => {
   );
 });
 
-// Route pour la page d'accueil
+// Route pour la page d'accueil - redirige vers l'interface restaurateur
 app.get('/', (req, res) => {
-  res.send(`
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Restaurant Management</title>
-        <meta charset="utf-8">
-        <style>
-            body { font-family: Arial, sans-serif; margin: 40px; background: #f5f5f5; }
-            .container { max-width: 800px; margin: 0 auto; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-            h1 { color: #333; text-align: center; }
-            .links { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 20px; margin-top: 30px; }
-            .link-card { background: #007bff; color: white; padding: 20px; border-radius: 8px; text-decoration: none; text-align: center; transition: background 0.3s; }
-            .link-card:hover { background: #0056b3; color: white; text-decoration: none; }
-            .status { background: #28a745; color: white; padding: 10px; border-radius: 5px; text-align: center; margin-bottom: 20px; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <div class="status">🟢 Serveur en ligne - Port ${PORT}</div>
-            <h1>🍽️ Système de Gestion Restaurant</h1>
-            <div class="links">
-                <a href="/client" class="link-card">
-                    <h3>📱 Interface Client</h3>
-                    <p>Application de gestion des tables et commandes</p>
-                </a>
-                <a href="/api/tables" class="link-card">
-                    <h3>🪑 API Tables</h3>
-                    <p>Visualiser les tables disponibles</p>
-                </a>
-                <a href="/api/menu" class="link-card">
-                    <h3>📋 API Menu</h3>
-                    <p>Voir le menu complet du restaurant</p>
-                </a>
-                <a href="/api/orders" class="link-card">
-                    <h3>📦 API Commandes</h3>
-                    <p>Gérer les commandes en cours</p>
-                </a>
-            </div>
-        </div>
-    </body>
-    </html>
-  `);
+  res.redirect('/admin');
+});
+
+// Route pour l'interface administrateur du restaurateur
+app.get('/admin', (req, res) => {
+  const path = require('path');
+  res.sendFile(path.join(__dirname, '../client/html', 'index.html'));
 });
 
 // Route pour servir le menu aux clients (via QR code)
