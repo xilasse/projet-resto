@@ -31,6 +31,27 @@ class RestaurantApp {
             this.openMenuItemModal();
         });
 
+        // Bouton d'initialisation du menu
+        document.getElementById('initMenuBtn').addEventListener('click', async () => {
+            if (confirm('Voulez-vous initialiser le menu avec des plats d\'exemple ? Cela ajoutera 20 plats dans toutes les catégories.')) {
+                try {
+                    const response = await fetch('/api/init-menu', { method: 'POST' });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert(`Menu initialisé avec succès !\n${result.message}`);
+                        // Recharger le menu
+                        await this.loadMenuItems();
+                    } else {
+                        alert('Erreur lors de l\'initialisation du menu');
+                    }
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    alert('Erreur lors de l\'initialisation du menu');
+                }
+            }
+        });
+
         document.getElementById('addTableBtn').addEventListener('click', () => {
             this.openTableModal();
         });
@@ -135,11 +156,39 @@ class RestaurantApp {
     // Gestion du menu
     async loadMenuItems() {
         try {
+            console.log('Chargement du menu...');
             const response = await fetch('/api/menu');
+            console.log('Réponse reçue:', response.status);
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
             this.menuItems = await response.json();
+            console.log('Menu items chargés:', this.menuItems.length, 'éléments');
+            console.log('Premier élément:', this.menuItems[0]);
+
             this.renderMenuItems();
         } catch (error) {
             console.error('Erreur lors du chargement du menu:', error);
+
+            // Afficher un message d'aide à l'utilisateur
+            const container = document.getElementById('menuGrid');
+            if (container) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 40px; color: #666;">
+                        <h3>🍽️ Aucun menu trouvé</h3>
+                        <p>La base de données semble vide.</p>
+                        <p><strong>Pour initialiser le menu d'exemple :</strong></p>
+                        <p>Visitez : <a href="/api/init-menu" target="_blank">/api/init-menu</a></p>
+                        <p>Puis rechargez cette page.</p>
+                        <button onclick="window.location.reload()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">
+                            🔄 Recharger la page
+                        </button>
+                    </div>
+                `;
+            }
+
             this.showError('Erreur lors du chargement du menu');
         }
     }
