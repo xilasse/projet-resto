@@ -6,15 +6,26 @@ let db;
 let isPostgreSQL = false;
 
 // Initialiser la connexion selon l'environnement
-if (process.env.DATABASE_URL) {
+if (process.env.DATABASE_URL || process.env.PGHOST || process.env.PGUSER) {
   // Production - PostgreSQL sur Railway
   console.log('🔄 Connexion à PostgreSQL sur Railway...');
   const { Client } = require('pg');
 
-  const client = new Client({
-    connectionString: process.env.DATABASE_URL,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
-  });
+  const connectionConfig = process.env.DATABASE_URL ?
+    {
+      connectionString: process.env.DATABASE_URL,
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    } :
+    {
+      host: process.env.PGHOST || 'localhost',
+      port: process.env.PGPORT || 5432,
+      database: process.env.PGDATABASE || 'railway',
+      user: process.env.PGUSER || 'postgres',
+      password: process.env.PGPASSWORD || '',
+      ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+    };
+
+  const client = new Client(connectionConfig);
 
   client.connect()
     .then(() => {

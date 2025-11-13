@@ -13,16 +13,17 @@ const { db, query, run, get, isPostgreSQL } = require('./db-manager');
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// Configuration des sessions
+// Configuration des sessions avec store adaptatif
 app.use(session({
   secret: process.env.SESSION_SECRET || 'restaurant-secret-key-dev-2024',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production' ? true : false,
+    secure: false, // HTTP pour Railway (pas HTTPS interne)
     httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000 // 24 heures
-  }
+  },
+  name: 'restaurant.sid' // Nom de cookie personnalisé
 }));
 
 app.use(cors({
@@ -38,13 +39,25 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: 'Erreur serveur interne' });
 });
 
-// Routes statiques
+// Routes statiques pour toutes les pages HTML
 app.get('/login.html', (req, res) => {
   res.sendFile('login.html', { root: '../client/html' });
 });
 
+app.get('/register.html', (req, res) => {
+  res.sendFile('register.html', { root: '../client/html' });
+});
+
 app.get('/admin.html', (req, res) => {
   res.sendFile('admin.html', { root: '../client/html' });
+});
+
+app.get('/index.html', (req, res) => {
+  res.sendFile('index.html', { root: '../client/html' });
+});
+
+app.get('/client-menu.html', (req, res) => {
+  res.sendFile('client-menu.html', { root: '../client/html' });
 });
 
 // Redirection intelligente selon le rôle
