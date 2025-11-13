@@ -149,9 +149,10 @@ class AuthManager {
             }
 
             const result = await response.json();
-            this.currentUser = result.restaurant;
+            this.currentUser = result.user;
+            this.userRestaurants = result.restaurants || [];
 
-            // Mettre à jour l'interface avec les informations du restaurant
+            // Mettre à jour l'interface avec les informations de l'utilisateur
             this.updateUI();
 
         } catch (error) {
@@ -161,11 +162,19 @@ class AuthManager {
     }
 
     updateUI() {
-        // Mettre à jour le nom du restaurant dans l'interface
-        const restaurantNameElements = document.querySelectorAll('.restaurant-name');
-        restaurantNameElements.forEach(element => {
+        // Mettre à jour le nom d'utilisateur dans l'interface
+        const userNameElements = document.querySelectorAll('.user-name');
+        userNameElements.forEach(element => {
             element.textContent = this.currentUser.name;
         });
+
+        // Mettre à jour le nom du restaurant (pour les restaurateurs)
+        const restaurantNameElements = document.querySelectorAll('.restaurant-name');
+        if (this.userRestaurants.length > 0) {
+            restaurantNameElements.forEach(element => {
+                element.textContent = this.userRestaurants[0].name;
+            });
+        }
 
         // Ajouter un bouton de déconnexion
         this.addLogoutButton();

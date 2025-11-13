@@ -13,11 +13,12 @@ const PORT = process.env.PORT || 5000;
 
 // Configuration des sessions
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'restaurant-secret-key-' + Math.random(),
+  secret: process.env.SESSION_SECRET || 'restaurant-secret-key-dev-2024',
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: process.env.NODE_ENV === 'production',
+    secure: false, // false pour development (HTTP)
+    httpOnly: true,
     maxAge: 24 * 60 * 60 * 1000 // 24 heures
   }
 }));
@@ -51,14 +52,23 @@ app.get('/admin.html', (req, res) => {
 
 // Redirection intelligente selon le rôle
 app.get('/', (req, res) => {
+  console.log('Route / appelée, session:', {
+    userId: req.session.userId,
+    userRole: req.session.userRole,
+    sessionID: req.sessionID
+  });
+
   if (!req.session.userId) {
+    console.log('Pas d\'utilisateur en session, redirection vers login');
     return res.redirect('/login.html');
   }
 
   // Rediriger selon le rôle de l'utilisateur
   if (req.session.userRole === 'SUPER_ADMIN') {
+    console.log('Redirection vers admin.html pour SUPER_ADMIN');
     return res.sendFile('admin.html', { root: '../client/html' });
   } else {
+    console.log('Redirection vers index.html pour utilisateur normal');
     return res.sendFile('index.html', { root: '../client/html' });
   }
 });
@@ -271,7 +281,7 @@ db.serialize(() => {
     if (!err) {
       try {
         const bcrypt = require('bcryptjs');
-        const superAdminPassword = await bcrypt.hash('vénzésas542sp', 10);
+        const superAdminPassword = await bcrypt.hash('venezesas542sp', 10);
 
         if (!row) {
           // Créer le super admin
@@ -280,7 +290,7 @@ db.serialize(() => {
             ['superadmin@restaurant.com', superAdminPassword, 'Super', 'Admin', 'SUPER_ADMIN'],
             function(err) {
               if (!err) {
-                console.log('🔑 Super Admin créé - Email: superadmin@restaurant.com, Password: vénzésas542sp');
+                console.log('🔑 Super Admin créé - Email: superadmin@restaurant.com, Password: venezesas542sp');
               }
             }
           );
@@ -290,7 +300,7 @@ db.serialize(() => {
             [superAdminPassword],
             function(err) {
               if (!err) {
-                console.log('🔑 Mot de passe Super Admin mis à jour - Email: superadmin@restaurant.com, Password: vénzésas542sp');
+                console.log('🔑 Mot de passe Super Admin mis à jour - Email: superadmin@restaurant.com, Password: venezesas542sp');
               }
             }
           );
@@ -487,15 +497,23 @@ app.post('/api/register', [
                     req.session.userName = `${firstName} ${lastName}`;
                     req.session.restaurants = [{ id: restaurantId, name: restaurantName, role: 'RESTAURATEUR' }];
 
-                    res.json({
-                      success: true,
-                      user: {
-                        id: userId,
-                        name: `${firstName} ${lastName}`,
-                        email,
-                        role: 'RESTAURATEUR'
-                      },
-                      restaurants: [{ id: restaurantId, name: restaurantName }]
+                    // Sauvegarder explicitement la session
+                    req.session.save((err) => {
+                      if (err) {
+                        console.error('Erreur sauvegarde session:', err);
+                        return res.status(500).json({ error: 'Erreur session' });
+                      }
+
+                      res.json({
+                        success: true,
+                        user: {
+                          id: userId,
+                          name: `${firstName} ${lastName}`,
+                          email,
+                          role: 'RESTAURATEUR'
+                        },
+                        restaurants: [{ id: restaurantId, name: restaurantName }]
+                      });
                     });
                   }
                 );
@@ -521,16 +539,23 @@ app.post('/api/login', [
 
   const { email, password } = req.body;
 
+  console.log('Tentative de login pour:', email);
+
   db.get('SELECT * FROM users WHERE email = ? AND is_active = 1', [email], async (err, user) => {
     if (err) {
       return res.status(500).json({ error: 'Erreur serveur' });
     }
     if (!user) {
+      console.log('Aucun utilisateur trouvé pour:', email);
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
 
+    console.log('Utilisateur trouvé:', { id: user.id, email: user.email, role: user.role });
+
     try {
       const isValidPassword = await bcrypt.compare(password, user.password_hash);
+      console.log('Vérification mot de passe:', { isValidPassword, passwordProvided: password });
+
       if (!isValidPassword) {
         return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
       }
@@ -552,15 +577,23 @@ app.post('/api/login', [
             req.session.userName = `${user.first_name} ${user.last_name}`;
             req.session.restaurants = restaurants;
 
-            res.json({
-              success: true,
-              user: {
-                id: user.id,
-                name: `${user.first_name} ${user.last_name}`,
-                email: user.email,
-                role: user.role
-              },
-              restaurants: restaurants
+            // Sauvegarder explicitement la session
+            req.session.save((err) => {
+              if (err) {
+                console.error('Erreur sauvegarde session:', err);
+                return res.status(500).json({ error: 'Erreur session' });
+              }
+
+              res.json({
+                success: true,
+                user: {
+                  id: user.id,
+                  name: `${user.first_name} ${user.last_name}`,
+                  email: user.email,
+                  role: user.role
+                },
+                restaurants: restaurants
+              });
             });
           });
       } else {
@@ -570,15 +603,23 @@ app.post('/api/login', [
         req.session.userName = `${user.first_name} ${user.last_name}`;
         req.session.restaurants = [];
 
-        res.json({
-          success: true,
-          user: {
-            id: user.id,
-            name: `${user.first_name} ${user.last_name}`,
-            email: user.email,
-            role: user.role
-          },
-          restaurants: []
+        // Sauvegarder explicitement la session
+        req.session.save((err) => {
+          if (err) {
+            console.error('Erreur sauvegarde session:', err);
+            return res.status(500).json({ error: 'Erreur session' });
+          }
+
+          res.json({
+            success: true,
+            user: {
+              id: user.id,
+              name: `${user.first_name} ${user.last_name}`,
+              email: user.email,
+              role: user.role
+            },
+            restaurants: []
+          });
         });
       }
     } catch (error) {
