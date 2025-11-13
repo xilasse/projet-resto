@@ -4,11 +4,28 @@ const bodyParser = require('body-parser');
 const sqlite3 = require('sqlite3').verbose();
 const QRCode = require('qrcode');
 const { v4: uuidv4 } = require('uuid');
+const bcrypt = require('bcryptjs');
+const session = require('express-session');
+const { body, validationResult } = require('express-validator');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-app.use(cors());
+// Configuration des sessions
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'restaurant-secret-key-' + Math.random(),
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: process.env.NODE_ENV === 'production',
+    maxAge: 24 * 60 * 60 * 1000 // 24 heures
+  }
+}));
+
+app.use(cors({
+  origin: process.env.NODE_ENV === 'production' ? false : true,
+  credentials: true
+}));
 app.use(bodyParser.json());
 app.use(express.static('public'));
 app.use('/client', express.static('../client'));
@@ -16,6 +33,23 @@ app.use('/client', express.static('../client'));
 // Route simple pour favicon
 app.get('/favicon.ico', (req, res) => {
   res.status(204).end();
+});
+
+// Routes pour les pages d'authentification
+app.get('/login.html', (req, res) => {
+  res.sendFile('login.html', { root: '../client/html' });
+});
+
+app.get('/register.html', (req, res) => {
+  res.sendFile('register.html', { root: '../client/html' });
+});
+
+// Redirection vers login si non authentifié pour la page principale
+app.get('/', (req, res) => {
+  if (!req.session.restaurantId) {
+    return res.redirect('/login.html');
+  }
+  res.sendFile('index.html', { root: '../client/html' });
 });
 
 // Route de debug pour vérifier la base de données
@@ -47,25 +81,42 @@ app.get('/api/debug', (req, res) => {
 const db = new sqlite3.Database('restaurant.db');
 
 db.serialize(() => {
-  // Créer les tables principales d'abord
+  // Créer les tables d'authentification en premier
+  db.run(`CREATE TABLE IF NOT EXISTS restaurants (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    owner_name TEXT NOT NULL,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    phone TEXT,
+    address TEXT,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  // Créer les tables principales avec restaurant_id
   db.run(`CREATE TABLE IF NOT EXISTS rooms (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
     width INTEGER DEFAULT 600,
     height INTEGER DEFAULT 400,
     color TEXT DEFAULT '#f8f9fa',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    restaurant_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS tables (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
-    table_number INTEGER UNIQUE,
+    table_number INTEGER,
     qr_code TEXT,
     x_position REAL DEFAULT 0,
     y_position REAL DEFAULT 0,
     room_id INTEGER,
+    restaurant_id INTEGER NOT NULL,
     status TEXT DEFAULT 'libre',
-    FOREIGN KEY (room_id) REFERENCES rooms (id)
+    FOREIGN KEY (room_id) REFERENCES rooms (id),
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants (id),
+    UNIQUE(table_number, restaurant_id)
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS menu_items (
@@ -77,7 +128,9 @@ db.serialize(() => {
     stock_quantity INTEGER DEFAULT 0,
     is_available BOOLEAN DEFAULT 1,
     image_url TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    restaurant_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
   )`);
 
   // Créer la table orders avec toutes les colonnes dès le début
@@ -90,8 +143,10 @@ db.serialize(() => {
     payment_status TEXT DEFAULT 'non_paye',
     allergies TEXT,
     other_allergies TEXT,
+    restaurant_id INTEGER NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (table_id) REFERENCES tables (id)
+    FOREIGN KEY (table_id) REFERENCES tables (id),
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
   )`);
 
   // Migrations seulement après création des tables
@@ -109,11 +164,12 @@ db.serialize(() => {
     }
   });
 
-  // Vérifier et ajouter les colonnes d'allergies si nécessaires
+  // Vérifier et ajouter les colonnes d'allergies et restaurant_id si nécessaires
   db.all(`PRAGMA table_info(orders)`, [], (err, columns) => {
     if (!err && columns) {
       const hasAllergies = columns.some(col => col.name === 'allergies');
       const hasOtherAllergies = columns.some(col => col.name === 'other_allergies');
+      const hasRestaurantId = columns.some(col => col.name === 'restaurant_id');
 
       if (!hasAllergies) {
         db.run(`ALTER TABLE orders ADD COLUMN allergies TEXT`);
@@ -121,7 +177,22 @@ db.serialize(() => {
       if (!hasOtherAllergies) {
         db.run(`ALTER TABLE orders ADD COLUMN other_allergies TEXT`);
       }
+      if (!hasRestaurantId) {
+        db.run(`ALTER TABLE orders ADD COLUMN restaurant_id INTEGER DEFAULT 1`);
+      }
     }
+  });
+
+  // Ajouter restaurant_id aux autres tables si nécessaire
+  ['tables', 'menu_items', 'rooms'].forEach(tableName => {
+    db.all(`PRAGMA table_info(${tableName})`, [], (err, columns) => {
+      if (!err && columns) {
+        const hasRestaurantId = columns.some(col => col.name === 'restaurant_id');
+        if (!hasRestaurantId) {
+          db.run(`ALTER TABLE ${tableName} ADD COLUMN restaurant_id INTEGER DEFAULT 1`);
+        }
+      }
+    });
   });
 
   db.run(`CREATE TABLE IF NOT EXISTS stock_movements (
@@ -130,8 +201,10 @@ db.serialize(() => {
     movement_type TEXT,
     quantity INTEGER,
     reason TEXT,
+    restaurant_id INTEGER NOT NULL,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (menu_item_id) REFERENCES menu_items (id)
+    FOREIGN KEY (menu_item_id) REFERENCES menu_items (id),
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS ingredients (
@@ -142,7 +215,9 @@ db.serialize(() => {
     min_quantity REAL DEFAULT 0,
     cost_per_unit REAL DEFAULT 0,
     supplier TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    restaurant_id INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
   )`);
 
   db.run(`CREATE TABLE IF NOT EXISTS menu_ingredients (
@@ -155,8 +230,141 @@ db.serialize(() => {
   )`);
 });
 
+// Middleware d'authentification
+const requireAuth = (req, res, next) => {
+  if (!req.session.restaurantId) {
+    return res.status(401).json({ error: 'Non authentifié' });
+  }
+  next();
+};
+
+// Routes d'authentification
+app.post('/api/register', [
+  body('email').isEmail().normalizeEmail(),
+  body('password').isLength({ min: 6 }),
+  body('restaurantName').notEmpty(),
+  body('ownerName').notEmpty()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { email, password, restaurantName, ownerName, phone, address } = req.body;
+
+  try {
+    // Vérifier si l'email existe déjà
+    db.get('SELECT id FROM restaurants WHERE email = ?', [email], async (err, row) => {
+      if (err) {
+        return res.status(500).json({ error: 'Erreur serveur' });
+      }
+      if (row) {
+        return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+      }
+
+      // Hasher le mot de passe
+      const saltRounds = 10;
+      const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+      // Créer le restaurant
+      db.run(
+        'INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES (?, ?, ?, ?, ?, ?)',
+        [restaurantName, ownerName, email, hashedPassword, phone, address],
+        function(err) {
+          if (err) {
+            return res.status(500).json({ error: 'Erreur lors de la création du compte' });
+          }
+
+          // Créer la session
+          req.session.restaurantId = this.lastID;
+          req.session.restaurantName = restaurantName;
+
+          res.json({
+            success: true,
+            restaurant: {
+              id: this.lastID,
+              name: restaurantName,
+              ownerName,
+              email
+            }
+          });
+        }
+      );
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.post('/api/login', [
+  body('email').isEmail().normalizeEmail(),
+  body('password').notEmpty()
+], (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  const { email, password } = req.body;
+
+  db.get('SELECT * FROM restaurants WHERE email = ?', [email], async (err, restaurant) => {
+    if (err) {
+      return res.status(500).json({ error: 'Erreur serveur' });
+    }
+    if (!restaurant) {
+      return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+    }
+
+    try {
+      const isValidPassword = await bcrypt.compare(password, restaurant.password_hash);
+      if (!isValidPassword) {
+        return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
+      }
+
+      // Créer la session
+      req.session.restaurantId = restaurant.id;
+      req.session.restaurantName = restaurant.name;
+
+      res.json({
+        success: true,
+        restaurant: {
+          id: restaurant.id,
+          name: restaurant.name,
+          ownerName: restaurant.owner_name,
+          email: restaurant.email
+        }
+      });
+    } catch (error) {
+      res.status(500).json({ error: 'Erreur serveur' });
+    }
+  });
+});
+
+app.post('/api/logout', (req, res) => {
+  req.session.destroy((err) => {
+    if (err) {
+      return res.status(500).json({ error: 'Erreur lors de la déconnexion' });
+    }
+    res.json({ success: true });
+  });
+});
+
+app.get('/api/me', requireAuth, (req, res) => {
+  db.get('SELECT id, name, owner_name, email, phone, address FROM restaurants WHERE id = ?',
+    [req.session.restaurantId], (err, restaurant) => {
+    if (err) {
+      return res.status(500).json({ error: 'Erreur serveur' });
+    }
+    if (!restaurant) {
+      return res.status(404).json({ error: 'Restaurant non trouvé' });
+    }
+
+    res.json({ restaurant });
+  });
+});
+
 // Route pour générer les QR codes des tables
-app.post('/api/tables', async (req, res) => {
+app.post('/api/tables', requireAuth, async (req, res) => {
   const { tableNumber, roomId, x, y } = req.body;
 
   try {
@@ -164,8 +372,8 @@ app.post('/api/tables', async (req, res) => {
     const qrCodeImage = await QRCode.toDataURL(qrData);
 
     db.run(
-      'INSERT OR REPLACE INTO tables (table_number, qr_code, x_position, y_position, room_id) VALUES (?, ?, ?, ?, ?)',
-      [tableNumber, qrCodeImage, x || 0, y || 0, roomId],
+      'INSERT OR REPLACE INTO tables (table_number, qr_code, x_position, y_position, room_id, restaurant_id) VALUES (?, ?, ?, ?, ?, ?)',
+      [tableNumber, qrCodeImage, x || 0, y || 0, roomId, req.session.restaurantId],
       function(err) {
         if (err) {
           res.status(500).json({ error: err.message });
@@ -186,8 +394,9 @@ app.post('/api/tables', async (req, res) => {
 });
 
 // Route pour obtenir toutes les tables
-app.get('/api/tables', (req, res) => {
-  db.all('SELECT * FROM tables ORDER BY table_number', (err, rows) => {
+app.get('/api/tables', requireAuth, (req, res) => {
+  db.all('SELECT * FROM tables WHERE restaurant_id = ? ORDER BY table_number',
+    [req.session.restaurantId], (err, rows) => {
     if (err) {
       res.status(500).json({ error: err.message });
       return;
@@ -197,13 +406,13 @@ app.get('/api/tables', (req, res) => {
 });
 
 // Route pour mettre à jour la position d'une table
-app.put('/api/tables/:id/position', (req, res) => {
+app.put('/api/tables/:id/position', requireAuth, (req, res) => {
   const { x, y } = req.body;
   const tableId = req.params.id;
 
   db.run(
-    'UPDATE tables SET x_position = ?, y_position = ? WHERE id = ?',
-    [x, y, tableId],
+    'UPDATE tables SET x_position = ?, y_position = ? WHERE id = ? AND restaurant_id = ?',
+    [x, y, tableId, req.session.restaurantId],
     function(err) {
       if (err) {
         res.status(500).json({ error: err.message });

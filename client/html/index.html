@@ -9,13 +9,18 @@
 <body>
     <div class="container">
         <header class="header">
-            <h1>Gestion Restaurant</h1>
+            <div class="header-left">
+                <h1>🍽️ <span class="restaurant-name">Gestion Restaurant</span></h1>
+            </div>
             <nav class="nav">
                 <button id="menuTab" class="nav-btn active">Menu</button>
                 <button id="tablesTab" class="nav-btn">Tables</button>
                 <button id="ordersTab" class="nav-btn">Commandes</button>
                 <button id="stockTab" class="nav-btn">Stock</button>
             </nav>
+            <div class="header-right">
+                <button id="logoutBtn" class="logout-btn">Déconnexion</button>
+            </div>
         </header>
 
         <main class="main-content">
@@ -315,6 +320,7 @@
         </div>
     </div>
 
+    <script src="/client/js/auth.js"></script>
     <script src="/client/js/app.js"></script>
 </body>
 </html>

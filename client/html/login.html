@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Connexion - Gestion Restaurant</title>
+    <link rel="stylesheet" href="/client/css/auth.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>🍽️ Gestion Restaurant</h1>
+                <h2>Connexion</h2>
+                <p>Accédez à votre interface de gestion</p>
+            </div>
+
+            <form id="loginForm" class="auth-form">
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        name="email"
+                        required
+                        placeholder="votre@email.com"
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <input
+                        type="password"
+                        id="password"
+                        name="password"
+                        required
+                        placeholder="Votre mot de passe"
+                    >
+                </div>
+
+                <button type="submit" class="auth-btn">
+                    Se connecter
+                </button>
+
+                <div class="auth-error" id="authError" style="display: none;"></div>
+            </form>
+
+            <div class="auth-footer">
+                <p>Pas encore de compte ?
+                    <a href="/register.html">Créer un compte</a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="/client/js/auth.js"></script>
+</body>
+</html>
