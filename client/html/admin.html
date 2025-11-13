@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Super Admin - Gestion Globale</title>
+    <link rel="stylesheet" href="/client/css/style.css">
+    <link rel="stylesheet" href="/client/css/admin.css">
+</head>
+<body>
+    <div class="container">
+        <header class="header">
+            <div class="header-left">
+                <h1>👑 <span class="admin-title">Super Admin</span></h1>
+            </div>
+            <nav class="nav">
+                <button id="dashboardTab" class="nav-btn active">Dashboard</button>
+                <button id="restaurantsTab" class="nav-btn">Restaurants</button>
+                <button id="usersTab" class="nav-btn">Utilisateurs</button>
+                <button id="statsTab" class="nav-btn">Statistiques</button>
+            </nav>
+            <div class="header-right">
+                <span class="user-name" id="userName"></span>
+                <button id="logoutBtn" class="logout-btn">Déconnexion</button>
+            </div>
+        </header>
+
+        <main class="main-content">
+            <!-- Section Dashboard -->
+            <section id="dashboardSection" class="section active">
+                <div class="section-header">
+                    <h2>📊 Dashboard Global</h2>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <div class="stat-icon">🏪</div>
+                        <div class="stat-content">
+                            <h3 id="totalRestaurants">-</h3>
+                            <p>Restaurants actifs</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-content">
+                            <h3 id="totalUsers">-</h3>
+                            <p>Utilisateurs</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">📋</div>
+                        <div class="stat-content">
+                            <h3 id="ordersToday">-</h3>
+                            <p>Commandes aujourd'hui</p>
+                        </div>
+                    </div>
+
+                    <div class="stat-card">
+                        <div class="stat-icon">📈</div>
+                        <div class="stat-content">
+                            <h3 id="ordersMonth">-</h3>
+                            <p>Commandes ce mois</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="recent-activity">
+                    <h3>Activité récente</h3>
+                    <div class="activity-list" id="recentActivity">
+                        <!-- Activité générée dynamiquement -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Section Restaurants -->
+            <section id="restaurantsSection" class="section">
+                <div class="section-header">
+                    <h2>🏪 Gestion des Restaurants</h2>
+                    <button id="addRestaurantBtn" class="btn btn-primary">Ajouter Restaurant</button>
+                </div>
+
+                <div class="data-table">
+                    <table id="restaurantsTable">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Propriétaire</th>
+                                <th>Email</th>
+                                <th>Utilisateurs</th>
+                                <th>Commandes (30j)</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Données générées dynamiquement -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section Utilisateurs -->
+            <section id="usersSection" class="section">
+                <div class="section-header">
+                    <h2>👥 Gestion des Utilisateurs</h2>
+                    <button id="addUserBtn" class="btn btn-primary">Ajouter Utilisateur</button>
+                </div>
+
+                <div class="data-table">
+                    <table id="usersTable">
+                        <thead>
+                            <tr>
+                                <th>Nom</th>
+                                <th>Email</th>
+                                <th>Rôle</th>
+                                <th>Restaurants</th>
+                                <th>Statut</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Données générées dynamiquement -->
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Section Statistiques -->
+            <section id="statsSection" class="section">
+                <div class="section-header">
+                    <h2>📈 Statistiques Détaillées</h2>
+                </div>
+
+                <div class="charts-grid">
+                    <div class="chart-card">
+                        <h3>Croissance des restaurants</h3>
+                        <canvas id="restaurantGrowthChart"></canvas>
+                    </div>
+
+                    <div class="chart-card">
+                        <h3>Commandes par mois</h3>
+                        <canvas id="ordersChart"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Modal pour ajouter restaurant -->
+    <div id="restaurantModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>Ajouter un restaurant</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="restaurantForm">
+                <div class="form-group">
+                    <label for="modalRestaurantName">Nom du restaurant</label>
+                    <input type="text" id="modalRestaurantName" required>
+                </div>
+                <div class="form-group">
+                    <label for="modalOwnerEmail">Email du propriétaire</label>
+                    <input type="email" id="modalOwnerEmail" required>
+                </div>
+                <div class="form-group">
+                    <label for="modalOwnerFirstName">Prénom</label>
+                    <input type="text" id="modalOwnerFirstName" required>
+                </div>
+                <div class="form-group">
+                    <label for="modalOwnerLastName">Nom</label>
+                    <input type="text" id="modalOwnerLastName" required>
+                </div>
+                <div class="form-group">
+                    <label for="modalOwnerPhone">Téléphone</label>
+                    <input type="tel" id="modalOwnerPhone">
+                </div>
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelBtn">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Créer</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="/client/js/auth.js"></script>
+    <script src="/client/js/admin.js"></script>
+</body>
+</html>

@@ -44,12 +44,23 @@ app.get('/register.html', (req, res) => {
   res.sendFile('register.html', { root: '../client/html' });
 });
 
-// Redirection vers login si non authentifié pour la page principale
+// Route pour la page Super Admin
+app.get('/admin.html', (req, res) => {
+  res.sendFile('admin.html', { root: '../client/html' });
+});
+
+// Redirection intelligente selon le rôle
 app.get('/', (req, res) => {
-  if (!req.session.restaurantId) {
+  if (!req.session.userId) {
     return res.redirect('/login.html');
   }
-  res.sendFile('index.html', { root: '../client/html' });
+
+  // Rediriger selon le rôle de l'utilisateur
+  if (req.session.userRole === 'SUPER_ADMIN') {
+    return res.sendFile('admin.html', { root: '../client/html' });
+  } else {
+    return res.sendFile('index.html', { root: '../client/html' });
+  }
 });
 
 // Route de debug pour vérifier la base de données
@@ -81,7 +92,7 @@ app.get('/api/debug', (req, res) => {
 const db = new sqlite3.Database('restaurant.db');
 
 db.serialize(() => {
-  // Créer les tables d'authentification en premier
+  // Créer les tables d'authentification et de rôles
   db.run(`CREATE TABLE IF NOT EXISTS restaurants (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name TEXT NOT NULL,
@@ -90,7 +101,67 @@ db.serialize(() => {
     password_hash TEXT NOT NULL,
     phone TEXT,
     address TEXT,
+    is_active BOOLEAN DEFAULT 1,
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  // Table des utilisateurs (remplace l'ancien système restaurant-only)
+  db.run(`CREATE TABLE IF NOT EXISTS users (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    email TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    first_name TEXT NOT NULL,
+    last_name TEXT NOT NULL,
+    phone TEXT,
+    role TEXT NOT NULL CHECK (role IN ('SUPER_ADMIN', 'RESTAURATEUR', 'MANAGER', 'EMPLOYE')),
+    is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+
+  // Table de liaison utilisateur-restaurant avec permissions
+  db.run(`CREATE TABLE IF NOT EXISTS user_restaurants (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    restaurant_id INTEGER NOT NULL,
+    role TEXT NOT NULL CHECK (role IN ('RESTAURATEUR', 'MANAGER', 'EMPLOYE')),
+    permissions TEXT, -- JSON des permissions spécifiques
+    is_active BOOLEAN DEFAULT 1,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id),
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants (id),
+    UNIQUE(user_id, restaurant_id)
+  )`);
+
+  // Table des plannings
+  db.run(`CREATE TABLE IF NOT EXISTS schedules (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    restaurant_id INTEGER NOT NULL,
+    start_date DATETIME NOT NULL,
+    end_date DATETIME NOT NULL,
+    shift_type TEXT, -- 'matin', 'midi', 'soir', 'nuit'
+    notes TEXT,
+    created_by INTEGER NOT NULL, -- ID du manager qui a créé
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users (id),
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants (id),
+    FOREIGN KEY (created_by) REFERENCES users (id)
+  )`);
+
+  // Table des événements
+  db.run(`CREATE TABLE IF NOT EXISTS events (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    restaurant_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    description TEXT,
+    event_date DATE NOT NULL,
+    start_time TIME,
+    end_time TIME,
+    event_type TEXT, -- 'special_menu', 'private_event', 'maintenance'
+    created_by INTEGER NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (restaurant_id) REFERENCES restaurants (id),
+    FOREIGN KEY (created_by) REFERENCES users (id)
   )`);
 
   // Créer les tables principales avec restaurant_id
@@ -195,6 +266,41 @@ db.serialize(() => {
     });
   });
 
+  // Créer le super admin par défaut s'il n'existe pas
+  db.get('SELECT id FROM users WHERE role = "SUPER_ADMIN"', [], async (err, row) => {
+    if (!err) {
+      try {
+        const bcrypt = require('bcryptjs');
+        const superAdminPassword = await bcrypt.hash('vénzésas542sp', 10);
+
+        if (!row) {
+          // Créer le super admin
+          db.run(`INSERT INTO users (email, password_hash, first_name, last_name, role)
+                  VALUES (?, ?, ?, ?, ?)`,
+            ['superadmin@restaurant.com', superAdminPassword, 'Super', 'Admin', 'SUPER_ADMIN'],
+            function(err) {
+              if (!err) {
+                console.log('🔑 Super Admin créé - Email: superadmin@restaurant.com, Password: vénzésas542sp');
+              }
+            }
+          );
+        } else {
+          // Mettre à jour le mot de passe du super admin existant
+          db.run(`UPDATE users SET password_hash = ? WHERE role = "SUPER_ADMIN"`,
+            [superAdminPassword],
+            function(err) {
+              if (!err) {
+                console.log('🔑 Mot de passe Super Admin mis à jour - Email: superadmin@restaurant.com, Password: vénzésas542sp');
+              }
+            }
+          );
+        }
+      } catch (error) {
+        console.error('Erreur création/mise à jour super admin:', error);
+      }
+    }
+  });
+
   db.run(`CREATE TABLE IF NOT EXISTS stock_movements (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     menu_item_id INTEGER,
@@ -230,31 +336,100 @@ db.serialize(() => {
   )`);
 });
 
-// Middleware d'authentification
+// Système de permissions
+const PERMISSIONS = {
+  SUPER_ADMIN: {
+    restaurants: ['view_all', 'view_stats'],
+    users: ['view_all', 'create', 'edit', 'delete'],
+    global_stats: ['view']
+  },
+  RESTAURATEUR: {
+    restaurants: ['manage_own'],
+    menu: ['create', 'edit', 'delete', 'view'],
+    tables: ['create', 'edit', 'delete', 'view'],
+    orders: ['view', 'manage'],
+    staff: ['create', 'edit', 'delete', 'view'],
+    schedules: ['create', 'edit', 'delete', 'view'],
+    events: ['create', 'edit', 'delete', 'view']
+  },
+  MANAGER: {
+    menu: ['view', 'edit'],
+    tables: ['view', 'edit'],
+    orders: ['view', 'manage', 'create', 'edit', 'delete'],
+    staff: ['view'],
+    schedules: ['create', 'edit', 'delete', 'view'],
+    events: ['create', 'edit', 'delete', 'view']
+  },
+  EMPLOYE: {
+    schedules: ['view_own'],
+    events: ['view']
+  }
+};
+
+// Middleware d'authentification mis à jour
 const requireAuth = (req, res, next) => {
-  if (!req.session.restaurantId) {
+  if (!req.session.userId) {
     return res.status(401).json({ error: 'Non authentifié' });
   }
   next();
 };
 
-// Routes d'authentification
+// Middleware pour vérifier les permissions
+const requirePermission = (resource, action) => {
+  return (req, res, next) => {
+    const userRole = req.session.userRole;
+    const userPermissions = PERMISSIONS[userRole];
+
+    if (!userPermissions || !userPermissions[resource] || !userPermissions[resource].includes(action)) {
+      return res.status(403).json({ error: 'Permission refusée' });
+    }
+    next();
+  };
+};
+
+// Middleware pour vérifier l'accès au restaurant
+const requireRestaurantAccess = async (req, res, next) => {
+  const userId = req.session.userId;
+  const restaurantId = req.params.restaurantId || req.body.restaurantId || req.query.restaurantId;
+
+  if (req.session.userRole === 'SUPER_ADMIN') {
+    return next(); // Super admin a accès à tout
+  }
+
+  if (!restaurantId) {
+    return res.status(400).json({ error: 'ID restaurant requis' });
+  }
+
+  // Vérifier l'accès à ce restaurant
+  db.get(`SELECT role FROM user_restaurants WHERE user_id = ? AND restaurant_id = ? AND is_active = 1`,
+    [userId, restaurantId], (err, row) => {
+      if (err || !row) {
+        return res.status(403).json({ error: 'Accès au restaurant refusé' });
+      }
+      req.restaurantRole = row.role;
+      req.restaurantId = restaurantId;
+      next();
+    });
+};
+
+// Routes d'authentification mises à jour
 app.post('/api/register', [
   body('email').isEmail().normalizeEmail(),
   body('password').isLength({ min: 6 }),
   body('restaurantName').notEmpty(),
-  body('ownerName').notEmpty()
+  body('firstName').notEmpty(),
+  body('lastName').notEmpty()
 ], async (req, res) => {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
   }
 
-  const { email, password, restaurantName, ownerName, phone, address } = req.body;
+  const { email, password, restaurantName, firstName, lastName, phone, address } = req.body;
 
   try {
     // Vérifier si l'email existe déjà
-    db.get('SELECT id FROM restaurants WHERE email = ?', [email], async (err, row) => {
+    db.get('SELECT id FROM users WHERE email = ?', [email], async (err, row) => {
       if (err) {
         return res.status(500).json({ error: 'Erreur serveur' });
       }
@@ -266,30 +441,69 @@ app.post('/api/register', [
       const saltRounds = 10;
       const hashedPassword = await bcrypt.hash(password, saltRounds);
 
-      // Créer le restaurant
-      db.run(
-        'INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES (?, ?, ?, ?, ?, ?)',
-        [restaurantName, ownerName, email, hashedPassword, phone, address],
-        function(err) {
-          if (err) {
-            return res.status(500).json({ error: 'Erreur lors de la création du compte' });
-          }
+      // Transaction pour créer restaurant et utilisateur
+      db.serialize(() => {
+        db.run('BEGIN TRANSACTION');
 
-          // Créer la session
-          req.session.restaurantId = this.lastID;
-          req.session.restaurantName = restaurantName;
-
-          res.json({
-            success: true,
-            restaurant: {
-              id: this.lastID,
-              name: restaurantName,
-              ownerName,
-              email
+        // Créer le restaurant
+        db.run(
+          'INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES (?, ?, ?, ?, ?, ?)',
+          [restaurantName, `${firstName} ${lastName}`, email, hashedPassword, phone, address],
+          function(err) {
+            if (err) {
+              db.run('ROLLBACK');
+              return res.status(500).json({ error: 'Erreur lors de la création du restaurant' });
             }
-          });
-        }
-      );
+
+            const restaurantId = this.lastID;
+
+            // Créer l'utilisateur restaurateur
+            db.run(
+              'INSERT INTO users (email, password_hash, first_name, last_name, phone, role) VALUES (?, ?, ?, ?, ?, ?)',
+              [email, hashedPassword, firstName, lastName, phone, 'RESTAURATEUR'],
+              function(err) {
+                if (err) {
+                  db.run('ROLLBACK');
+                  return res.status(500).json({ error: 'Erreur lors de la création de l\'utilisateur' });
+                }
+
+                const userId = this.lastID;
+
+                // Lier l'utilisateur au restaurant
+                db.run(
+                  'INSERT INTO user_restaurants (user_id, restaurant_id, role) VALUES (?, ?, ?)',
+                  [userId, restaurantId, 'RESTAURATEUR'],
+                  function(err) {
+                    if (err) {
+                      db.run('ROLLBACK');
+                      return res.status(500).json({ error: 'Erreur lors de la liaison utilisateur-restaurant' });
+                    }
+
+                    db.run('COMMIT');
+
+                    // Créer la session
+                    req.session.userId = userId;
+                    req.session.userRole = 'RESTAURATEUR';
+                    req.session.userName = `${firstName} ${lastName}`;
+                    req.session.restaurants = [{ id: restaurantId, name: restaurantName, role: 'RESTAURATEUR' }];
+
+                    res.json({
+                      success: true,
+                      user: {
+                        id: userId,
+                        name: `${firstName} ${lastName}`,
+                        email,
+                        role: 'RESTAURATEUR'
+                      },
+                      restaurants: [{ id: restaurantId, name: restaurantName }]
+                    });
+                  }
+                );
+              }
+            );
+          }
+        );
+      });
     });
   } catch (error) {
     res.status(500).json({ error: 'Erreur serveur' });
@@ -307,33 +521,66 @@ app.post('/api/login', [
 
   const { email, password } = req.body;
 
-  db.get('SELECT * FROM restaurants WHERE email = ?', [email], async (err, restaurant) => {
+  db.get('SELECT * FROM users WHERE email = ? AND is_active = 1', [email], async (err, user) => {
     if (err) {
       return res.status(500).json({ error: 'Erreur serveur' });
     }
-    if (!restaurant) {
+    if (!user) {
       return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
     }
 
     try {
-      const isValidPassword = await bcrypt.compare(password, restaurant.password_hash);
+      const isValidPassword = await bcrypt.compare(password, user.password_hash);
       if (!isValidPassword) {
         return res.status(401).json({ error: 'Email ou mot de passe incorrect' });
       }
 
-      // Créer la session
-      req.session.restaurantId = restaurant.id;
-      req.session.restaurantName = restaurant.name;
+      // Récupérer les restaurants associés (sauf pour Super Admin)
+      if (user.role !== 'SUPER_ADMIN') {
+        db.all(`SELECT r.id, r.name, ur.role as user_role
+                FROM restaurants r
+                JOIN user_restaurants ur ON r.id = ur.restaurant_id
+                WHERE ur.user_id = ? AND ur.is_active = 1 AND r.is_active = 1`,
+          [user.id], (err, restaurants) => {
+            if (err) {
+              return res.status(500).json({ error: 'Erreur serveur' });
+            }
 
-      res.json({
-        success: true,
-        restaurant: {
-          id: restaurant.id,
-          name: restaurant.name,
-          ownerName: restaurant.owner_name,
-          email: restaurant.email
-        }
-      });
+            // Créer la session
+            req.session.userId = user.id;
+            req.session.userRole = user.role;
+            req.session.userName = `${user.first_name} ${user.last_name}`;
+            req.session.restaurants = restaurants;
+
+            res.json({
+              success: true,
+              user: {
+                id: user.id,
+                name: `${user.first_name} ${user.last_name}`,
+                email: user.email,
+                role: user.role
+              },
+              restaurants: restaurants
+            });
+          });
+      } else {
+        // Super Admin - pas de restaurants spécifiques
+        req.session.userId = user.id;
+        req.session.userRole = user.role;
+        req.session.userName = `${user.first_name} ${user.last_name}`;
+        req.session.restaurants = [];
+
+        res.json({
+          success: true,
+          user: {
+            id: user.id,
+            name: `${user.first_name} ${user.last_name}`,
+            email: user.email,
+            role: user.role
+          },
+          restaurants: []
+        });
+      }
     } catch (error) {
       res.status(500).json({ error: 'Erreur serveur' });
     }
@@ -350,16 +597,249 @@ app.post('/api/logout', (req, res) => {
 });
 
 app.get('/api/me', requireAuth, (req, res) => {
-  db.get('SELECT id, name, owner_name, email, phone, address FROM restaurants WHERE id = ?',
-    [req.session.restaurantId], (err, restaurant) => {
+  db.get('SELECT id, email, first_name, last_name, phone, role FROM users WHERE id = ?',
+    [req.session.userId], (err, user) => {
     if (err) {
       return res.status(500).json({ error: 'Erreur serveur' });
     }
-    if (!restaurant) {
-      return res.status(404).json({ error: 'Restaurant non trouvé' });
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé' });
     }
 
-    res.json({ restaurant });
+    res.json({
+      user: {
+        id: user.id,
+        name: `${user.first_name} ${user.last_name}`,
+        email: user.email,
+        phone: user.phone,
+        role: user.role
+      },
+      restaurants: req.session.restaurants || []
+    });
+  });
+});
+
+// Routes Super Admin
+app.get('/api/admin/restaurants', requireAuth, requirePermission('restaurants', 'view_all'), (req, res) => {
+  db.all(`SELECT r.*, COUNT(ur.user_id) as user_count,
+          COUNT(CASE WHEN o.created_at >= date('now', '-30 days') THEN 1 END) as orders_30_days
+          FROM restaurants r
+          LEFT JOIN user_restaurants ur ON r.id = ur.restaurant_id AND ur.is_active = 1
+          LEFT JOIN orders o ON r.id = o.restaurant_id
+          WHERE r.is_active = 1
+          GROUP BY r.id
+          ORDER BY r.created_at DESC`,
+    (err, restaurants) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json(restaurants);
+    });
+});
+
+app.get('/api/admin/users', requireAuth, requirePermission('users', 'view_all'), (req, res) => {
+  db.all(`SELECT u.id, u.email, u.first_name, u.last_name, u.role, u.is_active, u.created_at,
+          GROUP_CONCAT(r.name || ' (' || ur.role || ')') as restaurants
+          FROM users u
+          LEFT JOIN user_restaurants ur ON u.id = ur.user_id AND ur.is_active = 1
+          LEFT JOIN restaurants r ON ur.restaurant_id = r.id AND r.is_active = 1
+          WHERE u.role != 'SUPER_ADMIN'
+          GROUP BY u.id
+          ORDER BY u.created_at DESC`,
+    (err, users) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+      res.json(users);
+    });
+});
+
+app.get('/api/admin/stats', requireAuth, requirePermission('global_stats', 'view'), (req, res) => {
+  const stats = {};
+
+  // Statistiques des restaurants
+  db.get('SELECT COUNT(*) as total_restaurants FROM restaurants WHERE is_active = 1', (err, restaurantStats) => {
+    stats.restaurants = restaurantStats?.total_restaurants || 0;
+
+    // Statistiques des utilisateurs
+    db.get('SELECT COUNT(*) as total_users FROM users WHERE is_active = 1 AND role != "SUPER_ADMIN"', (err, userStats) => {
+      stats.users = userStats?.total_users || 0;
+
+      // Commandes récentes
+      db.get('SELECT COUNT(*) as orders_today FROM orders WHERE date(created_at) = date("now")', (err, orderStats) => {
+        stats.orders_today = orderStats?.orders_today || 0;
+
+        db.get('SELECT COUNT(*) as orders_month FROM orders WHERE date(created_at) >= date("now", "start of month")', (err, monthStats) => {
+          stats.orders_month = monthStats?.orders_month || 0;
+
+          res.json(stats);
+        });
+      });
+    });
+  });
+});
+
+// Routes pour la gestion des employés
+app.post('/api/restaurants/:restaurantId/staff', requireAuth, requireRestaurantAccess, async (req, res) => {
+  const { email, firstName, lastName, phone, role, permissions } = req.body;
+  const { restaurantId } = req.params;
+
+  // Vérifier les permissions
+  if (req.restaurantRole !== 'RESTAURATEUR' && req.session.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Permission insuffisante' });
+  }
+
+  try {
+    const saltRounds = 10;
+    const tempPassword = 'temp' + Math.random().toString(36).substr(2, 8);
+    const hashedPassword = await bcrypt.hash(tempPassword, saltRounds);
+
+    db.serialize(() => {
+      db.run('BEGIN TRANSACTION');
+
+      // Créer l'utilisateur
+      db.run(
+        'INSERT INTO users (email, password_hash, first_name, last_name, phone, role) VALUES (?, ?, ?, ?, ?, ?)',
+        [email, hashedPassword, firstName, lastName, phone, role],
+        function(err) {
+          if (err) {
+            db.run('ROLLBACK');
+            if (err.code === 'SQLITE_CONSTRAINT') {
+              return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+            }
+            return res.status(500).json({ error: 'Erreur création utilisateur' });
+          }
+
+          const userId = this.lastID;
+
+          // Lier à ce restaurant
+          db.run(
+            'INSERT INTO user_restaurants (user_id, restaurant_id, role, permissions) VALUES (?, ?, ?, ?)',
+            [userId, restaurantId, role, JSON.stringify(permissions || {})],
+            function(err) {
+              if (err) {
+                db.run('ROLLBACK');
+                return res.status(500).json({ error: 'Erreur liaison restaurant' });
+              }
+
+              db.run('COMMIT');
+
+              res.json({
+                success: true,
+                user: {
+                  id: userId,
+                  name: `${firstName} ${lastName}`,
+                  email,
+                  role,
+                  tempPassword
+                },
+                message: `Employé créé. Mot de passe temporaire: ${tempPassword}`
+              });
+            }
+          );
+        }
+      );
+    });
+  } catch (error) {
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+app.get('/api/restaurants/:restaurantId/staff', requireAuth, requireRestaurantAccess, (req, res) => {
+  const { restaurantId } = req.params;
+
+  db.all(`SELECT u.id, u.email, u.first_name, u.last_name, u.phone, u.is_active, u.created_at,
+          ur.role, ur.permissions
+          FROM users u
+          JOIN user_restaurants ur ON u.id = ur.user_id
+          WHERE ur.restaurant_id = ? AND ur.is_active = 1
+          ORDER BY u.created_at DESC`,
+    [restaurantId], (err, staff) => {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+
+      // Parser les permissions JSON
+      const staffWithPermissions = staff.map(member => ({
+        ...member,
+        permissions: member.permissions ? JSON.parse(member.permissions) : {}
+      }));
+
+      res.json(staffWithPermissions);
+    });
+});
+
+// Routes pour la gestion des plannings
+app.post('/api/restaurants/:restaurantId/schedules', requireAuth, requireRestaurantAccess, (req, res) => {
+  const { restaurantId } = req.params;
+  const { userId, startDate, endDate, shiftType, notes } = req.body;
+
+  // Vérifier les permissions (Manager ou Restaurateur)
+  if (!['MANAGER', 'RESTAURATEUR'].includes(req.restaurantRole) && req.session.userRole !== 'SUPER_ADMIN') {
+    return res.status(403).json({ error: 'Permission insuffisante pour gérer les plannings' });
+  }
+
+  db.run(
+    `INSERT INTO schedules (user_id, restaurant_id, start_date, end_date, shift_type, notes, created_by)
+     VALUES (?, ?, ?, ?, ?, ?, ?)`,
+    [userId, restaurantId, startDate, endDate, shiftType, notes, req.session.userId],
+    function(err) {
+      if (err) {
+        return res.status(500).json({ error: err.message });
+      }
+
+      res.json({
+        success: true,
+        schedule: {
+          id: this.lastID,
+          userId,
+          startDate,
+          endDate,
+          shiftType,
+          notes
+        }
+      });
+    }
+  );
+});
+
+app.get('/api/restaurants/:restaurantId/schedules', requireAuth, requireRestaurantAccess, (req, res) => {
+  const { restaurantId } = req.params;
+  const { userId, startDate, endDate } = req.query;
+
+  let query = `
+    SELECT s.*, u.first_name, u.last_name, u.email,
+           creator.first_name as created_by_name, creator.last_name as created_by_lastname
+    FROM schedules s
+    JOIN users u ON s.user_id = u.id
+    JOIN users creator ON s.created_by = creator.id
+    WHERE s.restaurant_id = ?
+  `;
+  const params = [restaurantId];
+
+  if (userId) {
+    query += ' AND s.user_id = ?';
+    params.push(userId);
+  }
+
+  if (startDate && endDate) {
+    query += ' AND s.start_date >= ? AND s.end_date <= ?';
+    params.push(startDate, endDate);
+  }
+
+  // Filtrer selon le rôle
+  if (req.restaurantRole === 'EMPLOYE') {
+    query += ' AND s.user_id = ?';
+    params.push(req.session.userId);
+  }
+
+  query += ' ORDER BY s.start_date ASC';
+
+  db.all(query, params, (err, schedules) => {
+    if (err) {
+      return res.status(500).json({ error: err.message });
+    }
+    res.json(schedules);
   });
 });
 
