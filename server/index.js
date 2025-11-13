@@ -565,7 +565,7 @@ app.post('/api/login', [
         db.all(`SELECT r.id, r.name, ur.role as user_role
                 FROM restaurants r
                 JOIN user_restaurants ur ON r.id = ur.restaurant_id
-                WHERE ur.user_id = ? AND ur.is_active = 1 AND r.is_active = 1`,
+                WHERE ur.user_id = ?`,
           [user.id], (err, restaurants) => {
             if (err) {
               return res.status(500).json({ error: 'Erreur serveur' });
