@@ -152,9 +152,9 @@ class RestaurantApp {
                 this.loadStock();
                 break;
             case 'team':
-                // Charger les données de l'équipe via authManager
-                if (typeof authManager !== 'undefined' && authManager.loadTeamData) {
-                    authManager.loadTeamData();
+                // Initialiser l'équipe via authManager
+                if (typeof authManager !== 'undefined') {
+                    authManager.showTeamTab();
                 }
                 break;
         }

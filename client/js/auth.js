@@ -511,6 +511,10 @@ class AuthManager {
         }
 
         this.setupTeamNavigation();
+
+        // S'assurer que la vue équipe par défaut est active
+        this.switchTeamView('teamListView', 'teamListTab');
+
         // Charger immédiatement les données de l'équipe
         this.loadTeamData();
     }
@@ -539,13 +543,20 @@ class AuthManager {
     }
 
     switchTeamView(viewId, tabId) {
+        console.log('🔄 Switch vers vue équipe:', viewId, 'avec tab:', tabId);
+
         // Masquer toutes les vues
-        document.querySelectorAll('.team-view').forEach(view => {
+        const teamViews = document.querySelectorAll('.team-view');
+        console.log('📋 Nombre de vues équipe trouvées:', teamViews.length);
+        teamViews.forEach(view => {
             view.classList.remove('active');
+            console.log('➖ Vue désactivée:', view.id);
         });
 
         // Désactiver tous les boutons
-        document.querySelectorAll('.team-nav-btn').forEach(btn => {
+        const teamNavBtns = document.querySelectorAll('.team-nav-btn');
+        console.log('🔘 Nombre de boutons navigation équipe trouvés:', teamNavBtns.length);
+        teamNavBtns.forEach(btn => {
             btn.classList.remove('active');
         });
 
@@ -553,8 +564,16 @@ class AuthManager {
         const targetView = document.getElementById(viewId);
         const targetTab = document.getElementById(tabId);
 
-        if (targetView) targetView.classList.add('active');
-        if (targetTab) targetTab.classList.add('active');
+        console.log('🎯 Vue cible trouvée:', !!targetView, 'Tab cible trouvé:', !!targetTab);
+
+        if (targetView) {
+            targetView.classList.add('active');
+            console.log('✅ Vue activée:', viewId);
+        }
+        if (targetTab) {
+            targetTab.classList.add('active');
+            console.log('✅ Tab activé:', tabId);
+        }
 
         // Charger les données selon la vue
         switch(viewId) {
@@ -599,8 +618,19 @@ class AuthManager {
         console.log('🎯 Affichage équipe appelé avec:', team);
         const tableBody = document.getElementById('teamTableBody');
         console.log('📋 Element teamTableBody trouvé:', !!tableBody);
+
+        if (!tableBody) {
+            console.error('❌ teamTableBody non trouvé - section équipe peut-être pas visible');
+            return;
+        }
+
         const managerCountElement = document.getElementById('managerCount');
         const employeeCountElement = document.getElementById('employeeCount');
+
+        console.log('🔢 Elements compteurs trouvés:', {
+            managers: !!managerCountElement,
+            employees: !!employeeCountElement
+        });
 
         if (!tableBody) return;
 
