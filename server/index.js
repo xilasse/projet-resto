@@ -634,11 +634,11 @@ app.post('/api/rooms', requireAuth, async (req, res) => {
     // Vérifier d'abord si la table rooms a bien la colonne restaurant_id
     console.log('🔍 Vérification structure table rooms...');
 
-    // Créer la salle (sans restaurant_id pour le moment car la colonne n'existe peut-être pas)
+    // Créer la salle avec restaurant_id
     console.log('💾 Tentative création salle...');
     const result = await run(
-      'INSERT INTO rooms (name, color) VALUES (?, ?)',
-      [name, color]
+      'INSERT INTO rooms (name, color, restaurant_id) VALUES (?, ?, ?)',
+      [name, color, activeRestaurantId]
     );
 
     console.log('✅ Salle créée avec ID:', result.lastID);
@@ -649,7 +649,8 @@ app.post('/api/rooms', requireAuth, async (req, res) => {
       room: {
         id: result.lastID,
         name,
-        color
+        color,
+        restaurant_id: activeRestaurantId
       }
     });
 
@@ -687,6 +688,25 @@ app.get('/api/debug/tables-structure', requireAuth, async (req, res) => {
     }
   } catch (error) {
     console.error('Erreur structure debug:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Route de debug pour forcer la re-initialisation des tables manquantes
+app.post('/api/debug/reinit-tables', requireAuth, async (req, res) => {
+  try {
+    // Importer la fonction d'initialisation
+    const { createTables } = require('./db-manager');
+
+    console.log('🔄 Re-initialisation forcée des tables...');
+    await createTables();
+
+    res.json({
+      success: true,
+      message: 'Tables re-créées avec succès'
+    });
+  } catch (error) {
+    console.error('Erreur re-init tables:', error);
     res.status(500).json({ error: error.message });
   }
 });

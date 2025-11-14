@@ -224,6 +224,53 @@ function getTableQueries() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (user_id) REFERENCES users (id),
         FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS menu_items (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        description TEXT,
+        price REAL NOT NULL,
+        category TEXT,
+        image_url TEXT,
+        is_available INTEGER DEFAULT 1,
+        restaurant_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS rooms (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        color TEXT DEFAULT '#e3f2fd',
+        restaurant_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS tables (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        table_number TEXT NOT NULL,
+        room_id INTEGER NOT NULL,
+        capacity INTEGER NOT NULL DEFAULT 4,
+        status TEXT DEFAULT 'available' CHECK (status IN ('available', 'occupied', 'reserved', 'maintenance')),
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (room_id) REFERENCES rooms (id),
+        UNIQUE(table_number, room_id)
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS orders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        table_id INTEGER,
+        items TEXT,
+        total_amount REAL,
+        status TEXT DEFAULT 'en_attente',
+        customer_name TEXT,
+        notes TEXT,
+        restaurant_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (table_id) REFERENCES tables (id),
+        FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
       )`
     ];
   }
@@ -305,5 +352,6 @@ module.exports = {
   query,
   run,
   get,
-  isPostgreSQL
+  isPostgreSQL,
+  createTables
 };
