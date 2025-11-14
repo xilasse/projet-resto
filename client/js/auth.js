@@ -158,6 +158,11 @@ class AuthManager {
             // Configurer le bouton de déconnexion s'il existe
             this.setupLogoutButton();
 
+            // Charger les informations du restaurant actif si c'est un restaurateur
+            if (result.user.role === 'RESTAURATEUR') {
+                this.loadActiveRestaurantInfo();
+            }
+
         } catch (error) {
             console.error('Erreur de vérification auth:', error);
             window.location.href = '/login.html';
@@ -220,6 +225,77 @@ class AuthManager {
             console.log('Redirection vers login.html');
             window.location.href = '/login.html';
         }
+    }
+
+    async loadActiveRestaurantInfo() {
+        try {
+            const response = await fetch('/api/active-restaurant', {
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                const data = await response.json();
+                this.updateRestaurantInfo(data);
+                await this.setupSwitchRestaurantButton();
+            }
+        } catch (error) {
+            console.error('Erreur chargement restaurant actif:', error);
+        }
+    }
+
+    updateRestaurantInfo(restaurantData) {
+        const currentRestaurantElement = document.getElementById('currentRestaurant');
+        if (currentRestaurantElement) {
+            if (restaurantData.restaurantName) {
+                currentRestaurantElement.textContent = `🏪 ${restaurantData.restaurantName}`;
+            } else {
+                currentRestaurantElement.textContent = 'Aucun restaurant sélectionné';
+            }
+        }
+
+        // Mettre à jour le nom du restaurant dans le titre
+        const restaurantNameElements = document.querySelectorAll('.restaurant-name');
+        if (restaurantData.restaurantName) {
+            restaurantNameElements.forEach(element => {
+                element.textContent = restaurantData.restaurantName;
+            });
+        }
+    }
+
+    async setupSwitchRestaurantButton() {
+        try {
+            const response = await fetch('/api/my-restaurants', {
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                const restaurants = await response.json();
+
+                const switchBtn = document.getElementById('switchRestaurantBtn');
+                if (switchBtn && restaurants.length > 1) {
+                    switchBtn.style.display = 'block';
+                    switchBtn.addEventListener('click', () => {
+                        this.switchRestaurant();
+                    });
+                }
+            }
+        } catch (error) {
+            console.error('Erreur setup bouton changement restaurant:', error);
+        }
+    }
+
+    switchRestaurant() {
+        // Supprimer le restaurant actif de la session et rediriger vers le sélecteur
+        fetch('/api/clear-active-restaurant', {
+            method: 'POST',
+            credentials: 'include'
+        }).then(() => {
+            window.location.href = '/restaurant-selector.html';
+        }).catch(error => {
+            console.error('Erreur changement restaurant:', error);
+            // Rediriger quand même en cas d'erreur
+            window.location.href = '/restaurant-selector.html';
+        });
     }
 
     showError(message) {

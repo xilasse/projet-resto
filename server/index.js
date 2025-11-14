@@ -60,6 +60,10 @@ app.get('/client-menu.html', (req, res) => {
   res.sendFile('client-menu.html', { root: '../client/html' });
 });
 
+app.get('/restaurant-selector.html', (req, res) => {
+  res.sendFile('restaurant-selector.html', { root: '../client/html' });
+});
+
 // Redirection intelligente selon le rôle
 app.get('/', (req, res) => {
   console.log('Route / appelée, session:', {
@@ -77,6 +81,15 @@ app.get('/', (req, res) => {
   if (req.session.userRole === 'SUPER_ADMIN') {
     console.log('Redirection vers admin.html pour SUPER_ADMIN');
     return res.sendFile('admin.html', { root: '../client/html' });
+  } else if (req.session.userRole === 'RESTAURATEUR') {
+    // Pour les restaurateurs, vérifier s'ils ont plusieurs restaurants
+    if (!req.session.activeRestaurantId && req.session.restaurants && req.session.restaurants.length > 1) {
+      console.log('Restaurateur avec plusieurs restaurants, redirection vers sélecteur');
+      return res.sendFile('restaurant-selector.html', { root: '../client/html' });
+    } else {
+      console.log('Redirection vers index.html pour restaurateur');
+      return res.sendFile('index.html', { root: '../client/html' });
+    }
   } else {
     console.log('Redirection vers index.html pour utilisateur normal');
     return res.sendFile('index.html', { root: '../client/html' });
@@ -302,6 +315,13 @@ app.post('/api/login', [
       req.session.userName = `${user.first_name} ${user.last_name}`;
       req.session.restaurants = restaurants;
 
+      // Si l'utilisateur n'a qu'un seul restaurant, le définir comme actif
+      if (restaurants.length === 1) {
+        req.session.activeRestaurantId = restaurants[0].id;
+        req.session.activeRestaurantName = restaurants[0].name;
+        req.session.activeRestaurantRole = restaurants[0].user_role;
+      }
+
       // Sauvegarder explicitement la session
       req.session.save((err) => {
         if (err) {
@@ -436,6 +456,109 @@ app.get('/api/ingredients', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Erreur ingredients:', error);
     res.json([]);
+  }
+});
+
+// Route pour récupérer les restaurants d'un utilisateur
+app.get('/api/my-restaurants', requireAuth, async (req, res) => {
+  try {
+    const userId = req.session.userId;
+    const restaurants = await query(`
+      SELECT r.id, r.name, r.email, r.phone, r.address, ur.role as user_role
+      FROM restaurants r
+      JOIN user_restaurants ur ON r.id = ur.restaurant_id
+      WHERE ur.user_id = ?
+      ORDER BY r.name
+    `, [userId]);
+
+    res.json(restaurants);
+  } catch (error) {
+    console.error('Erreur récupération restaurants:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Route pour définir le restaurant actif en session
+app.post('/api/set-active-restaurant', requireAuth, async (req, res) => {
+  try {
+    const { restaurantId } = req.body;
+    const userId = req.session.userId;
+
+    // Vérifier que l'utilisateur a accès à ce restaurant
+    const access = await get(
+      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = ? AND ur.restaurant_id = ?',
+      [userId, restaurantId]
+    );
+
+    if (!access) {
+      return res.status(403).json({ error: 'Accès au restaurant refusé' });
+    }
+
+    // Récupérer les informations du restaurant
+    const restaurant = await get(
+      'SELECT id, name FROM restaurants WHERE id = ?',
+      [restaurantId]
+    );
+
+    if (!restaurant) {
+      return res.status(404).json({ error: 'Restaurant introuvable' });
+    }
+
+    // Mettre à jour la session
+    req.session.activeRestaurantId = restaurantId;
+    req.session.activeRestaurantName = restaurant.name;
+    req.session.activeRestaurantRole = access.role;
+
+    // Sauvegarder la session
+    req.session.save((err) => {
+      if (err) {
+        console.error('Erreur sauvegarde session:', err);
+        return res.status(500).json({ error: 'Erreur session' });
+      }
+
+      res.json({
+        success: true,
+        restaurant: {
+          id: restaurantId,
+          name: restaurant.name,
+          role: access.role
+        }
+      });
+    });
+
+  } catch (error) {
+    console.error('Erreur définition restaurant actif:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
+  }
+});
+
+// Route pour récupérer le restaurant actif
+app.get('/api/active-restaurant', requireAuth, (req, res) => {
+  res.json({
+    restaurantId: req.session.activeRestaurantId,
+    restaurantName: req.session.activeRestaurantName,
+    restaurantRole: req.session.activeRestaurantRole
+  });
+});
+
+// Route pour supprimer le restaurant actif de la session
+app.post('/api/clear-active-restaurant', requireAuth, (req, res) => {
+  try {
+    req.session.activeRestaurantId = null;
+    req.session.activeRestaurantName = null;
+    req.session.activeRestaurantRole = null;
+
+    req.session.save((err) => {
+      if (err) {
+        console.error('Erreur sauvegarde session:', err);
+        return res.status(500).json({ error: 'Erreur session' });
+      }
+
+      res.json({ success: true });
+    });
+  } catch (error) {
+    console.error('Erreur suppression restaurant actif:', error);
+    res.status(500).json({ error: 'Erreur serveur' });
   }
 });
 

@@ -42,6 +42,45 @@ body {
     flex-wrap: wrap;
 }
 
+/* Informations restaurant */
+.header-right {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+.restaurant-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #f8f9fa;
+    padding: 8px 12px;
+    border-radius: 6px;
+    border-left: 3px solid #e67e22;
+}
+
+.current-restaurant {
+    font-weight: 500;
+    color: #2c3e50;
+    font-size: 0.9rem;
+}
+
+.switch-restaurant-btn {
+    background: #3498db;
+    color: white;
+    border: none;
+    padding: 4px 8px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+    transition: all 0.3s ease;
+}
+
+.switch-restaurant-btn:hover {
+    background: #2980b9;
+    transform: rotate(180deg);
+}
+
 .logout-btn {
     background: #e74c3c;
     color: white;
