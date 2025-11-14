@@ -486,11 +486,13 @@ class AuthManager {
     }
 
     showTeamTab() {
-        const teamTab = document.getElementById('teamTab');
-        if (teamTab) {
-            teamTab.style.display = 'block';
+        const teamSection = document.getElementById('teamSection');
+        if (teamSection) {
+            teamSection.style.display = 'block';
         }
         this.setupTeamNavigation();
+        // Charger immédiatement les données de l'équipe
+        this.loadTeamData();
     }
 
     setupTeamNavigation() {
@@ -502,6 +504,17 @@ class AuthManager {
                 this.switchTeamView(viewId, btn.id);
             });
         });
+
+        // Event listener pour le bouton d'ajout d'utilisateur
+        const addUserBtn = document.getElementById('addUserBtn');
+        if (addUserBtn) {
+            // Supprimer les anciens listeners pour éviter les doublons
+            addUserBtn.replaceWith(addUserBtn.cloneNode(true));
+            const newAddUserBtn = document.getElementById('addUserBtn');
+            newAddUserBtn.addEventListener('click', () => {
+                this.showCreateUserModal();
+            });
+        }
     }
 
     switchTeamView(viewId, tabId) {
@@ -537,27 +550,34 @@ class AuthManager {
     }
 
     async loadTeamData() {
+        console.log('🔄 Chargement des données équipe...');
         try {
             const response = await fetch('/api/restaurant-team', {
                 credentials: 'include'
             });
 
+            console.log('📡 Réponse API équipe:', response.status);
+
             if (response.ok) {
                 const team = await response.json();
+                console.log('👥 Données équipe reçues:', team);
                 this.currentTeamData = team; // Stocker les données pour réutilisation
                 this.displayTeam(team);
             } else {
-                console.error('Erreur chargement équipe:', response.status);
+                const errorText = await response.text();
+                console.error('❌ Erreur chargement équipe:', response.status, errorText);
                 this.displayTeamError('Erreur lors du chargement de l\'équipe');
             }
         } catch (error) {
-            console.error('Erreur chargement équipe:', error);
+            console.error('❌ Erreur connexion serveur équipe:', error);
             this.displayTeamError('Erreur de connexion au serveur');
         }
     }
 
     displayTeam(team) {
+        console.log('🎯 Affichage équipe appelé avec:', team);
         const tableBody = document.getElementById('teamTableBody');
+        console.log('📋 Element teamTableBody trouvé:', !!tableBody);
         const managerCountElement = document.getElementById('managerCount');
         const employeeCountElement = document.getElementById('employeeCount');
 
