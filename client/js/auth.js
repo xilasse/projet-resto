@@ -701,8 +701,6 @@ class AuthManager {
 
         // SOLUTION TEMPORAIRE : Forcer l'affichage avec du CSS inline
         const table = tableBody.closest('table');
-        const teamSection = document.getElementById('teamSection');
-        const teamListView = document.getElementById('teamListView');
 
         if (table) {
             table.style.display = 'table';
