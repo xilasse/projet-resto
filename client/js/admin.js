@@ -44,15 +44,7 @@ class SuperAdminApp {
             });
         });
 
-        // Déconnexion
-        document.getElementById('logoutBtn').addEventListener('click', async () => {
-            try {
-                await fetch('/api/logout', { method: 'POST', credentials: 'include' });
-                window.location.href = '/login.html';
-            } catch (error) {
-                console.error('Erreur déconnexion:', error);
-            }
-        });
+        // La déconnexion est maintenant gérée par auth.js
 
         // Modals
         this.setupModals();

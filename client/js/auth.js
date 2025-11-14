@@ -155,6 +155,9 @@ class AuthManager {
             // Mettre à jour l'interface avec les informations de l'utilisateur
             this.updateUI();
 
+            // Configurer le bouton de déconnexion s'il existe
+            this.setupLogoutButton();
+
         } catch (error) {
             console.error('Erreur de vérification auth:', error);
             window.location.href = '/login.html';
@@ -176,43 +179,45 @@ class AuthManager {
             });
         }
 
-        // Ajouter un bouton de déconnexion
-        this.addLogoutButton();
+        // Configurer le bouton de déconnexion
+        this.setupLogoutButton();
     }
 
-    addLogoutButton() {
-        const header = document.querySelector('.header');
-        if (header && !header.querySelector('.logout-btn')) {
-            const logoutBtn = document.createElement('button');
-            logoutBtn.textContent = 'Déconnexion';
-            logoutBtn.className = 'logout-btn';
-            logoutBtn.style.cssText = `
-                background: #e74c3c;
-                color: white;
-                border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                cursor: pointer;
-                position: absolute;
-                top: 20px;
-                right: 20px;
-            `;
+    setupLogoutButton() {
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            // Supprimer les anciens event listeners pour éviter les doublons
+            logoutBtn.replaceWith(logoutBtn.cloneNode(true));
 
-            logoutBtn.addEventListener('click', () => this.logout());
-            header.style.position = 'relative';
-            header.appendChild(logoutBtn);
+            // Récupérer la nouvelle référence après clonage
+            const newLogoutBtn = document.getElementById('logoutBtn');
+
+            // Ajouter l'event listener
+            newLogoutBtn.addEventListener('click', (e) => {
+                e.preventDefault();
+                this.logout();
+            });
         }
     }
 
     async logout() {
+        console.log('Déconnexion en cours...');
         try {
-            await fetch('/api/logout', {
+            const response = await fetch('/api/logout', {
                 method: 'POST',
                 credentials: 'include'
             });
+
+            if (response.ok) {
+                console.log('Déconnexion réussie');
+            } else {
+                console.error('Erreur serveur lors de la déconnexion:', response.status);
+            }
         } catch (error) {
             console.error('Erreur lors de la déconnexion:', error);
         } finally {
+            // Rediriger vers la page de connexion dans tous les cas
+            console.log('Redirection vers login.html');
             window.location.href = '/login.html';
         }
     }
