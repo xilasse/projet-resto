@@ -490,6 +490,50 @@ class AuthManager {
         if (teamTab) {
             teamTab.style.display = 'block';
         }
+        this.setupTeamNavigation();
+    }
+
+    setupTeamNavigation() {
+        // Navigation entre les vues équipe
+        const teamNavButtons = document.querySelectorAll('.team-nav-btn');
+        teamNavButtons.forEach(btn => {
+            btn.addEventListener('click', () => {
+                const viewId = btn.id.replace('Tab', 'View');
+                this.switchTeamView(viewId, btn.id);
+            });
+        });
+    }
+
+    switchTeamView(viewId, tabId) {
+        // Masquer toutes les vues
+        document.querySelectorAll('.team-view').forEach(view => {
+            view.classList.remove('active');
+        });
+
+        // Désactiver tous les boutons
+        document.querySelectorAll('.team-nav-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+
+        // Activer la vue et le bouton sélectionnés
+        const targetView = document.getElementById(viewId);
+        const targetTab = document.getElementById(tabId);
+
+        if (targetView) targetView.classList.add('active');
+        if (targetTab) targetTab.classList.add('active');
+
+        // Charger les données selon la vue
+        switch(viewId) {
+            case 'teamListView':
+                this.loadTeamData();
+                break;
+            case 'profilesView':
+                this.loadProfiles();
+                break;
+            case 'schedulesView':
+                this.loadSchedules();
+                break;
+        }
     }
 
     async loadTeamData() {
@@ -500,6 +544,7 @@ class AuthManager {
 
             if (response.ok) {
                 const team = await response.json();
+                this.currentTeamData = team; // Stocker les données pour réutilisation
                 this.displayTeam(team);
             } else {
                 console.error('Erreur chargement équipe:', response.status);
@@ -749,6 +794,577 @@ class AuthManager {
     editUser(userId) {
         // Fonctionnalité d'édition à implémenter plus tard
         this.showNotification('Fonctionnalité d\'édition en cours de développement', 'info');
+    }
+
+    editUserProfile(userId) {
+        // Trouver l'utilisateur dans les données actuelles
+        const user = this.currentTeamData?.find(u => u.id === userId);
+        if (!user) {
+            this.showNotification('Utilisateur introuvable', 'error');
+            return;
+        }
+
+        // Créer et afficher un modal d'édition
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Modifier le profil</h3>
+                    <button class="close-btn" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</button>
+                </div>
+                <form class="modal-content" onsubmit="authManager.updateUserProfile(event, ${userId})">
+                    <div class="form-group">
+                        <label for="edit-first-name">Prénom</label>
+                        <input type="text" id="edit-first-name" name="firstName" value="${user.first_name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-last-name">Nom</label>
+                        <input type="text" id="edit-last-name" name="lastName" value="${user.last_name}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-email">Email</label>
+                        <input type="email" id="edit-email" name="email" value="${user.email}" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-phone">Téléphone</label>
+                        <input type="tel" id="edit-phone" name="phone" value="${user.phone || ''}">
+                    </div>
+                    <div class="form-group">
+                        <label for="edit-role">Rôle</label>
+                        <select id="edit-role" name="role" required>
+                            <option value="EMPLOYE" ${user.role === 'EMPLOYE' ? 'selected' : ''}>Employé</option>
+                            <option value="MANAGER" ${user.role === 'MANAGER' ? 'selected' : ''}>Manager</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>
+                            <input type="checkbox" id="edit-is-active" name="isActive" ${user.is_active ? 'checked' : ''}>
+                            Compte actif
+                        </label>
+                    </div>
+                    <div class="modal-actions">
+                        <button type="button" onclick="this.parentElement.parentElement.parentElement.remove()" class="btn-cancel">Annuler</button>
+                        <button type="submit" class="btn-submit">Sauvegarder</button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+    }
+
+    async updateUserProfile(event, userId) {
+        event.preventDefault();
+
+        const formData = new FormData(event.target);
+        const data = {
+            firstName: formData.get('firstName'),
+            lastName: formData.get('lastName'),
+            email: formData.get('email'),
+            phone: formData.get('phone'),
+            role: formData.get('role'),
+            isActive: formData.get('isActive') === 'on'
+        };
+
+        const submitBtn = event.target.querySelector('.btn-submit');
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Mise à jour...';
+
+        try {
+            const response = await fetch(`/api/update-user/${userId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data),
+                credentials: 'include'
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                this.showNotification(result.message, 'success');
+                // Fermer le modal
+                event.target.closest('.modal-overlay').remove();
+                // Recharger les données
+                setTimeout(() => {
+                    this.loadTeamData();
+                    this.loadProfiles();
+                }, 500);
+            } else {
+                this.showNotification(result.error || 'Erreur lors de la mise à jour', 'error');
+            }
+
+        } catch (error) {
+            console.error('Erreur mise à jour profil:', error);
+            this.showNotification('Erreur de connexion au serveur', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Sauvegarder';
+        }
+    }
+
+    manageUserSchedule(userId) {
+        // Basculer vers l'onglet planning et mettre en évidence l'utilisateur
+        this.switchTeamView('schedulesView', 'schedulesTab');
+
+        // Trouver l'utilisateur pour afficher son planning
+        const user = this.currentTeamData?.find(u => u.id === userId);
+        if (user) {
+            this.showNotification(`Affichage du planning de ${user.first_name} ${user.last_name}`, 'info');
+            // Mettre en évidence l'utilisateur dans le planning
+            setTimeout(() => {
+                this.highlightUserInSchedule(userId);
+            }, 100);
+        }
+    }
+
+    highlightUserInSchedule(userId) {
+        // Fonction pour mettre en évidence un utilisateur spécifique dans le planning
+        const scheduleRows = document.querySelectorAll('.schedule-row');
+        scheduleRows.forEach(row => {
+            if (row.dataset.userId == userId) {
+                row.style.backgroundColor = '#fff3cd';
+                row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+                // Retirer la mise en évidence après quelques secondes
+                setTimeout(() => {
+                    row.style.backgroundColor = '';
+                }, 3000);
+            }
+        });
+    }
+
+    async loadProfiles() {
+        try {
+            // Utiliser les données déjà chargées si disponibles
+            if (this.currentTeamData) {
+                this.displayProfiles(this.currentTeamData);
+                return;
+            }
+
+            const response = await fetch('/api/restaurant-team', {
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                const team = await response.json();
+                this.currentTeamData = team;
+                this.displayProfiles(team);
+            } else {
+                console.error('Erreur chargement profils:', response.status);
+                this.displayProfilesError('Erreur lors du chargement des profils');
+            }
+        } catch (error) {
+            console.error('Erreur chargement profils:', error);
+            this.displayProfilesError('Erreur de connexion au serveur');
+        }
+    }
+
+    displayProfiles(team) {
+        const profilesGrid = document.getElementById('profilesGrid');
+
+        if (!profilesGrid) return;
+
+        if (team.length === 0) {
+            profilesGrid.innerHTML = `
+                <div class="loading-message">
+                    Aucun membre d'équipe trouvé. Créez d'abord des comptes utilisateurs !
+                </div>
+            `;
+            return;
+        }
+
+        profilesGrid.innerHTML = team.map(user => {
+            const initials = (user.first_name.charAt(0) + user.last_name.charAt(0)).toUpperCase();
+            const cardClass = user.role === 'MANAGER' ? 'manager' : 'employee';
+            const roleText = user.role === 'MANAGER' ? 'Manager' : 'Employé';
+
+            return `
+                <div class="profile-card ${cardClass}">
+                    <div class="profile-card-header">
+                        <div class="profile-avatar">${initials}</div>
+                        <div class="profile-info">
+                            <h4>${user.first_name} ${user.last_name}</h4>
+                            <div class="role">${roleText}</div>
+                        </div>
+                    </div>
+                    <div class="profile-details">
+                        <div>📧 ${user.email}</div>
+                        <div>📞 ${user.phone || 'Non renseigné'}</div>
+                        <div>📊 Statut: ${user.is_active ? 'Actif' : 'Inactif'}</div>
+                        <div>📅 Créé le: ${new Date(user.created_at || Date.now()).toLocaleDateString()}</div>
+                    </div>
+                    <div class="profile-actions">
+                        <button class="btn-profile edit" onclick="authManager.editUserProfile(${user.id})">
+                            ✏️ Modifier
+                        </button>
+                        <button class="btn-profile schedule" onclick="authManager.manageUserSchedule(${user.id})">
+                            📅 Planning
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
+
+    displayProfilesError(message) {
+        const profilesGrid = document.getElementById('profilesGrid');
+        if (profilesGrid) {
+            profilesGrid.innerHTML = `
+                <div class="loading-message" style="color: #e74c3c;">
+                    ${message}
+                    <br><br>
+                    <button onclick="authManager.loadProfiles()" style="padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Réessayer
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    async loadSchedules() {
+        try {
+            // Utiliser les données d'équipe déjà chargées si disponibles
+            if (this.currentTeamData) {
+                this.displaySchedules(this.currentTeamData);
+                return;
+            }
+
+            const response = await fetch('/api/restaurant-team', {
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                const team = await response.json();
+                this.currentTeamData = team;
+                this.displaySchedules(team);
+            } else {
+                this.displaySchedulesError('Erreur lors du chargement de l\'équipe');
+            }
+        } catch (error) {
+            console.error('Erreur chargement plannings:', error);
+            this.displaySchedulesError('Erreur de connexion au serveur');
+        }
+    }
+
+    displaySchedules(team = []) {
+        const schedulesContent = document.getElementById('schedulesContent');
+
+        if (!schedulesContent) return;
+
+        const currentWeek = this.getCurrentWeek();
+
+        if (team.length === 0) {
+            schedulesContent.innerHTML = `
+                <div class="loading-message">
+                    Aucun membre d'équipe trouvé.<br>
+                    Créez d'abord des comptes utilisateurs dans l'onglet "Liste équipe" !
+                </div>
+            `;
+            return;
+        }
+
+        schedulesContent.innerHTML = `
+            <div class="schedule-header">
+                <h4>Planning de la semaine</h4>
+                <div class="schedule-controls">
+                    <button class="btn-schedule-action" onclick="authManager.generateWeeklySchedule()">
+                        📅 Générer un planning type
+                    </button>
+                    <button class="btn-schedule-action" onclick="authManager.exportSchedule()">
+                        📊 Exporter PDF
+                    </button>
+                </div>
+            </div>
+            <table class="schedule-table">
+                <thead>
+                    <tr>
+                        <th class="employee-column">Employé</th>
+                        ${currentWeek.map(day => `
+                            <th class="day-column">
+                                ${day.name}<br>
+                                <small>${day.date}</small>
+                            </th>
+                        `).join('')}
+                        <th class="hours-column">Total heures</th>
+                    </tr>
+                </thead>
+                <tbody id="scheduleTableBody">
+                    ${team.map(user => {
+                        const initials = (user.first_name.charAt(0) + user.last_name.charAt(0)).toUpperCase();
+                        const roleClass = user.role === 'MANAGER' ? 'manager' : 'employee';
+
+                        return `
+                            <tr class="schedule-row ${roleClass}" data-user-id="${user.id}">
+                                <td class="employee-info">
+                                    <div class="employee-avatar">${initials}</div>
+                                    <div>
+                                        <div class="employee-name">${user.first_name} ${user.last_name}</div>
+                                        <div class="employee-role">${user.role === 'MANAGER' ? 'Manager' : 'Employé'}</div>
+                                    </div>
+                                </td>
+                                ${currentWeek.map((day, dayIndex) => `
+                                    <td class="schedule-day" data-day="${dayIndex}">
+                                        <div class="schedule-slot" onclick="authManager.editScheduleSlot(${user.id}, ${dayIndex})">
+                                            <div class="time-slot">--:-- / --:--</div>
+                                            <div class="slot-status">Repos</div>
+                                        </div>
+                                    </td>
+                                `).join('')}
+                                <td class="total-hours">0h</td>
+                            </tr>
+                        `;
+                    }).join('')}
+                </tbody>
+            </table>
+
+            <div class="schedule-legend">
+                <div class="legend-item">
+                    <span class="legend-color working"></span> Travail
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color rest"></span> Repos
+                </div>
+                <div class="legend-item">
+                    <span class="legend-color vacation"></span> Congé
+                </div>
+            </div>
+        `;
+    }
+
+    displaySchedulesError(message) {
+        const schedulesContent = document.getElementById('schedulesContent');
+        if (schedulesContent) {
+            schedulesContent.innerHTML = `
+                <div class="loading-message" style="color: #e74c3c;">
+                    ${message}
+                    <br><br>
+                    <button onclick="authManager.loadSchedules()" style="padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        Réessayer
+                    </button>
+                </div>
+            `;
+        }
+    }
+
+    getCurrentWeek() {
+        const today = new Date();
+        const currentDay = today.getDay();
+        const monday = new Date(today);
+        monday.setDate(today.getDate() - currentDay + (currentDay === 0 ? -6 : 1));
+
+        const week = [];
+        const days = ['Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+
+        for (let i = 0; i < 7; i++) {
+            const day = new Date(monday);
+            day.setDate(monday.getDate() + i);
+            week.push({
+                name: days[i],
+                date: day.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' })
+            });
+        }
+
+        return week;
+    }
+
+    editScheduleSlot(userId, dayIndex) {
+        const user = this.currentTeamData?.find(u => u.id === userId);
+        const currentWeek = this.getCurrentWeek();
+
+        if (!user || !currentWeek[dayIndex]) return;
+
+        const modal = document.createElement('div');
+        modal.className = 'modal-overlay';
+        modal.innerHTML = `
+            <div class="modal">
+                <div class="modal-header">
+                    <h3>Modifier le planning</h3>
+                    <button class="close-btn" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</button>
+                </div>
+                <form class="modal-content" onsubmit="authManager.saveScheduleSlot(event, ${userId}, ${dayIndex})">
+                    <div class="schedule-info">
+                        <strong>${user.first_name} ${user.last_name}</strong><br>
+                        ${currentWeek[dayIndex].name} ${currentWeek[dayIndex].date}
+                    </div>
+
+                    <div class="form-group">
+                        <label for="schedule-type">Type de service</label>
+                        <select id="schedule-type" name="type" onchange="authManager.toggleScheduleFields(this.value)">
+                            <option value="rest">Repos</option>
+                            <option value="work">Travail</option>
+                            <option value="vacation">Congé</option>
+                        </select>
+                    </div>
+
+                    <div id="work-fields" style="display: none;">
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="start-time">Heure de début</label>
+                                <input type="time" id="start-time" name="startTime" value="09:00">
+                            </div>
+                            <div class="form-group">
+                                <label for="end-time">Heure de fin</label>
+                                <input type="time" id="end-time" name="endTime" value="17:00">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="break-duration">Pause (minutes)</label>
+                            <input type="number" id="break-duration" name="breakDuration" value="60" min="0" max="300">
+                        </div>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" onclick="this.parentElement.parentElement.parentElement.remove()" class="btn-cancel">Annuler</button>
+                        <button type="submit" class="btn-submit">Sauvegarder</button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+    }
+
+    toggleScheduleFields(type) {
+        const workFields = document.getElementById('work-fields');
+        if (workFields) {
+            workFields.style.display = type === 'work' ? 'block' : 'none';
+        }
+    }
+
+    saveScheduleSlot(event, userId, dayIndex) {
+        event.preventDefault();
+
+        const formData = new FormData(event.target);
+        const type = formData.get('type');
+        const startTime = formData.get('startTime');
+        const endTime = formData.get('endTime');
+        const breakDuration = formData.get('breakDuration') || 0;
+
+        // Trouver la cellule correspondante dans le tableau
+        const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+        const dayCell = row?.querySelector(`td[data-day="${dayIndex}"]`);
+
+        if (!dayCell) return;
+
+        const slot = dayCell.querySelector('.schedule-slot');
+
+        // Mettre à jour l'affichage selon le type
+        switch (type) {
+            case 'work':
+                const workHours = this.calculateWorkHours(startTime, endTime, breakDuration);
+                slot.innerHTML = `
+                    <div class="time-slot">${startTime} / ${endTime}</div>
+                    <div class="slot-status working">${workHours}h</div>
+                `;
+                slot.className = 'schedule-slot working';
+                break;
+
+            case 'vacation':
+                slot.innerHTML = `
+                    <div class="time-slot">--:-- / --:--</div>
+                    <div class="slot-status vacation">Congé</div>
+                `;
+                slot.className = 'schedule-slot vacation';
+                break;
+
+            default: // rest
+                slot.innerHTML = `
+                    <div class="time-slot">--:-- / --:--</div>
+                    <div class="slot-status">Repos</div>
+                `;
+                slot.className = 'schedule-slot';
+                break;
+        }
+
+        // Recalculer le total d'heures pour cet employé
+        this.updateEmployeeTotalHours(userId);
+
+        // Fermer le modal
+        event.target.closest('.modal-overlay').remove();
+
+        this.showNotification('Planning mis à jour', 'success');
+    }
+
+    calculateWorkHours(startTime, endTime, breakDuration) {
+        const [startHour, startMin] = startTime.split(':').map(Number);
+        const [endHour, endMin] = endTime.split(':').map(Number);
+
+        const startMinutes = startHour * 60 + startMin;
+        const endMinutes = endHour * 60 + endMin;
+
+        let totalMinutes = endMinutes - startMinutes - parseInt(breakDuration);
+        if (totalMinutes < 0) totalMinutes = 0;
+
+        return (totalMinutes / 60).toFixed(1);
+    }
+
+    updateEmployeeTotalHours(userId) {
+        const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+        if (!row) return;
+
+        let totalHours = 0;
+        const workingSlots = row.querySelectorAll('.schedule-slot.working .slot-status');
+
+        workingSlots.forEach(slot => {
+            const hoursText = slot.textContent.replace('h', '');
+            totalHours += parseFloat(hoursText) || 0;
+        });
+
+        const totalCell = row.querySelector('.total-hours');
+        if (totalCell) {
+            totalCell.textContent = `${totalHours.toFixed(1)}h`;
+        }
+    }
+
+    generateWeeklySchedule() {
+        if (!this.currentTeamData || this.currentTeamData.length === 0) {
+            this.showNotification('Aucun membre d\'équipe disponible', 'error');
+            return;
+        }
+
+        // Générer un planning type avec horaires par défaut
+        this.currentTeamData.forEach(user => {
+            const row = document.querySelector(`tr[data-user-id="${user.id}"]`);
+            if (!row) return;
+
+            // Horaires par défaut selon le rôle
+            const defaultShifts = user.role === 'MANAGER'
+                ? { start: '08:00', end: '16:00', days: [1, 2, 3, 4, 5] } // Lun-Ven pour managers
+                : { start: '09:00', end: '17:00', days: [1, 2, 3, 5, 6] }; // Lun-Mar-Mer-Ven-Sam pour employés
+
+            for (let dayIndex = 0; dayIndex < 7; dayIndex++) {
+                const dayCell = row.querySelector(`td[data-day="${dayIndex}"]`);
+                const slot = dayCell?.querySelector('.schedule-slot');
+
+                if (!slot) continue;
+
+                if (defaultShifts.days.includes(dayIndex)) {
+                    const workHours = this.calculateWorkHours(defaultShifts.start, defaultShifts.end, 60);
+                    slot.innerHTML = `
+                        <div class="time-slot">${defaultShifts.start} / ${defaultShifts.end}</div>
+                        <div class="slot-status working">${workHours}h</div>
+                    `;
+                    slot.className = 'schedule-slot working';
+                } else {
+                    slot.innerHTML = `
+                        <div class="time-slot">--:-- / --:--</div>
+                        <div class="slot-status">Repos</div>
+                    `;
+                    slot.className = 'schedule-slot';
+                }
+            }
+
+            this.updateEmployeeTotalHours(user.id);
+        });
+
+        this.showNotification('Planning type généré avec succès', 'success');
+    }
+
+    exportSchedule() {
+        this.showNotification('Export PDF en cours de développement', 'info');
     }
 }
 

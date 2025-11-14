@@ -827,6 +827,74 @@ app.delete('/api/delete-user/:id', requireAuth, async (req, res) => {
   }
 });
 
+// Route pour mettre à jour un utilisateur
+app.put('/api/update-user/:id', requireAuth, async (req, res) => {
+  try {
+    const userIdToUpdate = req.params.id;
+    const { firstName, lastName, email, phone, role, isActive } = req.body;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    // Vérifications de sécurité
+    if (req.session.userRole !== 'RESTAURATEUR') {
+      return res.status(403).json({ error: 'Seuls les restaurateurs peuvent modifier des utilisateurs' });
+    }
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    // Validation des données
+    if (!firstName || !lastName || !email || !role) {
+      return res.status(400).json({ error: 'Tous les champs obligatoires doivent être remplis' });
+    }
+
+    if (!['EMPLOYE', 'MANAGER'].includes(role)) {
+      return res.status(400).json({ error: 'Rôle invalide' });
+    }
+
+    // Vérifier que l'utilisateur à modifier appartient bien au restaurant
+    const userAccess = await get(
+      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = ? AND ur.restaurant_id = ?',
+      [userIdToUpdate, activeRestaurantId]
+    );
+
+    if (!userAccess) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé dans ce restaurant' });
+    }
+
+    // Vérifier que l'email n'est pas déjà utilisé par un autre utilisateur
+    const existingUser = await get(
+      'SELECT id FROM users WHERE email = ? AND id != ?',
+      [email, userIdToUpdate]
+    );
+
+    if (existingUser) {
+      return res.status(400).json({ error: 'Cette adresse email est déjà utilisée' });
+    }
+
+    // Mettre à jour les informations de l'utilisateur
+    await run(
+      'UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ?, is_active = ? WHERE id = ?',
+      [firstName, lastName, email, phone || null, isActive ? 1 : 0, userIdToUpdate]
+    );
+
+    // Mettre à jour le rôle dans la table user_restaurants
+    await run(
+      'UPDATE user_restaurants SET role = ? WHERE user_id = ? AND restaurant_id = ?',
+      [role, userIdToUpdate, activeRestaurantId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Profil utilisateur mis à jour avec succès'
+    });
+
+  } catch (error) {
+    console.error('Erreur mise à jour utilisateur:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour de l\'utilisateur' });
+  }
+});
+
 // Démarrage du serveur
 app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);

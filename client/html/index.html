@@ -323,7 +323,7 @@
                     <button type="button" class="btn btn-secondary" onclick="app.closeEditRoomModal()">Annuler</button>
                 </div>
             </form>
-        </div>
+            </section>
 
             <!-- Section Gestion d'Équipe -->
             <section id="teamSection" class="section">
@@ -332,44 +332,87 @@
                     <div class="header-buttons">
                         <button id="addUserBtn" class="btn btn-primary">
                             <span class="icon">👤➕</span>
-                            Ajouter un utilisateur
+                            Créer un compte
                         </button>
                     </div>
                 </div>
 
-                <div class="team-stats">
-                    <div class="stat-card">
-                        <div class="stat-number" id="managerCount">0</div>
-                        <div class="stat-label">Managers</div>
+                <!-- Sous-navigation équipe -->
+                <div class="team-nav">
+                    <button id="teamListTab" class="team-nav-btn active">👥 Équipe</button>
+                    <button id="profilesTab" class="team-nav-btn">👤 Profils</button>
+                    <button id="schedulesTab" class="team-nav-btn">📅 Plannings</button>
+                </div>
+
+                <!-- Vue Liste d'équipe -->
+                <div id="teamListView" class="team-view active">
+                    <div class="team-stats">
+                        <div class="stat-card">
+                            <div class="stat-number" id="managerCount">0</div>
+                            <div class="stat-label">Managers</div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-number" id="employeeCount">0</div>
+                            <div class="stat-label">Employés</div>
+                        </div>
                     </div>
-                    <div class="stat-card">
-                        <div class="stat-number" id="employeeCount">0</div>
-                        <div class="stat-label">Employés</div>
+
+                    <div class="team-list">
+                        <div class="table-container">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>Nom complet</th>
+                                        <th>Email</th>
+                                        <th>Téléphone</th>
+                                        <th>Rôle</th>
+                                        <th>Statut</th>
+                                        <th>Actions</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="teamTableBody">
+                                    <tr>
+                                        <td colspan="6" class="loading-message">Chargement de l'équipe...</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
-                <div class="team-list">
-                    <div class="table-container">
-                        <table class="table">
-                            <thead>
-                                <tr>
-                                    <th>Nom complet</th>
-                                    <th>Email</th>
-                                    <th>Téléphone</th>
-                                    <th>Rôle</th>
-                                    <th>Statut</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="teamTableBody">
-                                <tr>
-                                    <td colspan="6" class="loading-message">Chargement de l'équipe...</td>
-                                </tr>
-                            </tbody>
-                        </table>
+                <!-- Vue Profils -->
+                <div id="profilesView" class="team-view">
+                    <div class="profiles-header">
+                        <h3>📋 Gestion des Profils</h3>
+                        <p>Gérez les informations détaillées de vos employés et managers</p>
+                    </div>
+
+                    <div class="profiles-grid" id="profilesGrid">
+                        <div class="loading-message">Chargement des profils...</div>
+                    </div>
+                </div>
+
+                <!-- Vue Plannings -->
+                <div id="schedulesView" class="team-view">
+                    <div class="schedules-header">
+                        <h3>📅 Gestion des Plannings</h3>
+                        <div class="schedule-controls">
+                            <button id="addScheduleBtn" class="btn btn-secondary">
+                                ➕ Nouveau planning
+                            </button>
+                            <select id="scheduleWeekSelect" class="form-control">
+                                <option value="current">Cette semaine</option>
+                                <option value="next">Semaine prochaine</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="schedules-content" id="schedulesContent">
+                        <div class="loading-message">Chargement des plannings...</div>
                     </div>
                 </div>
             </section>
+        </main>
     </div>
 
     <!-- Modal pour créer un nouveau restaurant -->
