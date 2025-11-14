@@ -537,7 +537,7 @@ class AuthManager {
             addUserBtn.replaceWith(addUserBtn.cloneNode(true));
             const newAddUserBtn = document.getElementById('addUserBtn');
             newAddUserBtn.addEventListener('click', () => {
-                this.showCreateUserModal();
+                this.openCreateUserModal();
             });
         }
     }
