@@ -642,7 +642,10 @@ class AuthManager {
         if (employeeCountElement) employeeCountElement.textContent = employees.length;
 
         // Afficher la liste
+        console.log('📝 Génération HTML pour', team.length, 'membres');
+
         if (team.length === 0) {
+            console.log('❌ Équipe vide - affichage message');
             tableBody.innerHTML = `
                 <tr>
                     <td colspan="6" class="loading-message">
@@ -653,7 +656,9 @@ class AuthManager {
             return;
         }
 
+        console.log('🏗️ Début génération HTML tableau...');
         tableBody.innerHTML = team.map(user => {
+            console.log('👤 Traitement utilisateur:', user.first_name, user.last_name, user.role);
             const roleBadge = user.role === 'MANAGER' ? 'role-manager' : 'role-employee';
             const roleText = user.role === 'MANAGER' ? 'Manager' : 'Employé';
             const statusBadge = user.is_active ? 'status-active' : 'status-inactive';
@@ -679,6 +684,8 @@ class AuthManager {
                 </tr>
             `;
         }).join('');
+
+        console.log('✅ HTML injecté dans tableBody');
     }
 
     displayTeamError(message) {
