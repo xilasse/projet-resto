@@ -703,23 +703,20 @@ class AuthManager {
         const table = tableBody.closest('table');
 
         if (table) {
-            table.style.display = 'table';
-            table.style.width = '100%';
-            table.style.visibility = 'visible';
-            table.style.opacity = '1';
-            table.style.zIndex = '1';
+            table.style.cssText = 'display: table !important; width: 100% !important; visibility: visible !important; opacity: 1 !important; z-index: 1001 !important; background: white !important; border: 2px solid red !important; min-height: 200px !important;';
+        }
+
+        // Forcer aussi le tableBody
+        if (tableBody) {
+            tableBody.style.cssText = 'display: table-row-group !important; visibility: visible !important; opacity: 1 !important; background: white !important;';
         }
 
         if (teamSection) {
-            teamSection.style.display = 'block';
-            teamSection.style.visibility = 'visible';
-            teamSection.style.opacity = '1';
+            teamSection.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 999 !important; background: white !important; min-height: 500px !important;';
         }
 
         if (teamListView) {
-            teamListView.style.display = 'block';
-            teamListView.style.visibility = 'visible';
-            teamListView.style.opacity = '1';
+            teamListView.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 1000 !important; background: white !important; min-height: 400px !important;';
         }
 
         console.log('🔧 Styles inline appliqués pour forcer l\'affichage');
