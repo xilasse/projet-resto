@@ -375,6 +375,70 @@ app.get('/api/check-auth', requireAuth, (req, res) => {
   });
 });
 
+// Alias pour compatibilité
+app.get('/api/me', requireAuth, (req, res) => {
+  res.json({
+    authenticated: true,
+    user: {
+      id: req.session.userId,
+      role: req.session.userRole,
+      name: req.session.userName
+    },
+    restaurants: req.session.restaurants
+  });
+});
+
+// Routes API basiques pour éviter les erreurs 404
+app.get('/api/menu', requireAuth, async (req, res) => {
+  try {
+    const menu = await query('SELECT * FROM menu_items ORDER BY category, name');
+    res.json(menu);
+  } catch (error) {
+    console.error('Erreur menu:', error);
+    res.json([]); // Retourner un tableau vide en cas d'erreur
+  }
+});
+
+app.get('/api/tables', requireAuth, async (req, res) => {
+  try {
+    const tables = await query('SELECT * FROM tables ORDER BY table_number');
+    res.json(tables);
+  } catch (error) {
+    console.error('Erreur tables:', error);
+    res.json([]);
+  }
+});
+
+app.get('/api/orders', requireAuth, async (req, res) => {
+  try {
+    const orders = await query('SELECT * FROM orders ORDER BY created_at DESC');
+    res.json(orders);
+  } catch (error) {
+    console.error('Erreur orders:', error);
+    res.json([]);
+  }
+});
+
+app.get('/api/rooms', requireAuth, async (req, res) => {
+  try {
+    const rooms = await query('SELECT * FROM rooms ORDER BY name');
+    res.json(rooms);
+  } catch (error) {
+    console.error('Erreur rooms:', error);
+    res.json([]);
+  }
+});
+
+app.get('/api/ingredients', requireAuth, async (req, res) => {
+  try {
+    const ingredients = await query('SELECT * FROM ingredients ORDER BY name');
+    res.json(ingredients);
+  } catch (error) {
+    console.error('Erreur ingredients:', error);
+    res.json([]);
+  }
+});
+
 // Démarrage du serveur
 app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);

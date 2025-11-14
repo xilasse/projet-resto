@@ -19,7 +19,7 @@ class SuperAdminApp {
 
     async checkSuperAdminAccess() {
         try {
-            const response = await fetch('/api/me', { credentials: 'include' });
+            const response = await fetch('/api/check-auth', { credentials: 'include' });
             const data = await response.json();
 
             if (!response.ok || data.user.role !== 'SUPER_ADMIN') {

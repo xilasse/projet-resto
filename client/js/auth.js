@@ -138,7 +138,7 @@ class AuthManager {
         }
 
         try {
-            const response = await fetch('/api/me', {
+            const response = await fetch('/api/check-auth', {
                 credentials: 'include'
             });
 
