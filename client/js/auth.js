@@ -699,9 +699,35 @@ class AuthManager {
         console.log('📋 Contenu final du tableau:', tableBody.innerHTML.substring(0, 300) + '...');
         console.log('🔍 Nombre d\'éléments tr dans tableBody:', tableBody.querySelectorAll('tr').length);
 
+        // SOLUTION TEMPORAIRE : Forcer l'affichage avec du CSS inline
+        const table = tableBody.closest('table');
+        const teamSection = document.getElementById('teamSection');
+        const teamListView = document.getElementById('teamListView');
+
+        if (table) {
+            table.style.display = 'table';
+            table.style.width = '100%';
+            table.style.visibility = 'visible';
+            table.style.opacity = '1';
+            table.style.zIndex = '1';
+        }
+
+        if (teamSection) {
+            teamSection.style.display = 'block';
+            teamSection.style.visibility = 'visible';
+            teamSection.style.opacity = '1';
+        }
+
+        if (teamListView) {
+            teamListView.style.display = 'block';
+            teamListView.style.visibility = 'visible';
+            teamListView.style.opacity = '1';
+        }
+
+        console.log('🔧 Styles inline appliqués pour forcer l\'affichage');
+
         // Vérifier la visibilité du tableau parent
         const tableContainer = tableBody.closest('.table-container');
-        const table = tableBody.closest('table');
         console.log('📊 Visibilité tableau:', {
             tableDisplay: table ? getComputedStyle(table).display : 'non trouvé',
             tableContainerDisplay: tableContainer ? getComputedStyle(tableContainer).display : 'non trouvé',
