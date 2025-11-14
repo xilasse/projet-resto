@@ -21,6 +21,10 @@ body {
     animation: slideIn 0.5s ease-out;
 }
 
+.auth-container.register {
+    max-width: 600px;
+}
+
 .auth-card {
     background: white;
     border-radius: 12px;
@@ -29,7 +33,7 @@ body {
 }
 
 .register-card {
-    max-width: 500px;
+    max-width: 600px;
     margin: 0 auto;
 }
 
