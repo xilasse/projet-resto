@@ -469,12 +469,15 @@ app.post('/api/tables', requireAuth, async (req, res) => {
     }
 
     // Vérifier que la salle appartient au restaurant actif
+    console.log('🔍 Vérification salle:', { room_id, activeRestaurantId });
     const existingRoom = await get(
       'SELECT * FROM rooms WHERE id = ? AND restaurant_id = ?',
       [room_id, activeRestaurantId]
     );
 
+    console.log('🏠 Salle trouvée:', existingRoom);
     if (!existingRoom) {
+      console.log('❌ Salle non trouvée pour room_id:', room_id);
       return res.status(404).json({ error: 'Salle non trouvée' });
     }
 
@@ -489,11 +492,13 @@ app.post('/api/tables', requireAuth, async (req, res) => {
     }
 
     // Créer la table
+    console.log('💾 Tentative création table...');
     const result = await run(
       'INSERT INTO tables (table_number, room_id, capacity, status) VALUES (?, ?, ?, ?)',
       [table_number, room_id, capacity, 'available']
     );
 
+    console.log('✅ Table créée avec ID:', result.lastID);
     res.json({
       success: true,
       message: 'Table créée avec succès',
@@ -637,7 +642,7 @@ app.post('/api/rooms', requireAuth, async (req, res) => {
     console.log('🔑 Session restaurant ID:', req.session.activeRestaurantId);
     console.log('👤 Role utilisateur:', req.session.userRole);
 
-    const { name, color } = req.body;
+    const { name, color, width, height } = req.body;
     const activeRestaurantId = req.session.activeRestaurantId;
 
     // Vérifications
@@ -660,11 +665,11 @@ app.post('/api/rooms', requireAuth, async (req, res) => {
     // Vérifier d'abord si la table rooms a bien la colonne restaurant_id
     console.log('🔍 Vérification structure table rooms...');
 
-    // Créer la salle avec restaurant_id
+    // Créer la salle avec restaurant_id et dimensions
     console.log('💾 Tentative création salle...');
     const result = await run(
-      'INSERT INTO rooms (name, color, restaurant_id) VALUES (?, ?, ?)',
-      [name, color, activeRestaurantId]
+      'INSERT INTO rooms (name, color, width, height, restaurant_id) VALUES (?, ?, ?, ?, ?)',
+      [name, color, width || 600, height || 400, activeRestaurantId]
     );
 
     console.log('✅ Salle créée avec ID:', result.lastID);
@@ -676,6 +681,8 @@ app.post('/api/rooms', requireAuth, async (req, res) => {
         id: result.lastID,
         name,
         color,
+        width: width || 600,
+        height: height || 400,
         restaurant_id: activeRestaurantId
       }
     });

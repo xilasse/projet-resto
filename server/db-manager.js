@@ -243,6 +243,8 @@ function getTableQueries() {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT NOT NULL,
         color TEXT DEFAULT '#e3f2fd',
+        width INTEGER DEFAULT 600,
+        height INTEGER DEFAULT 400,
         restaurant_id INTEGER NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
