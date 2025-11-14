@@ -421,7 +421,22 @@ app.get('/api/menu', requireAuth, async (req, res) => {
 
 app.get('/api/tables', requireAuth, async (req, res) => {
   try {
-    const tables = await query('SELECT * FROM tables ORDER BY table_number');
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    // Joindre avec rooms pour filtrer par restaurant
+    const tables = await query(`
+      SELECT t.*, r.name as room_name, r.color as room_color
+      FROM tables t
+      JOIN rooms r ON t.room_id = r.id
+      WHERE r.restaurant_id = ?
+      ORDER BY r.name, t.table_number
+    `, [activeRestaurantId]);
+
+    console.log(`📋 Tables récupérées pour restaurant ${activeRestaurantId}:`, tables.length);
     res.json(tables);
   } catch (error) {
     console.error('Erreur tables:', error);
@@ -432,11 +447,15 @@ app.get('/api/tables', requireAuth, async (req, res) => {
 // Route pour créer une nouvelle table
 app.post('/api/tables', requireAuth, async (req, res) => {
   try {
+    console.log('🪑 Création table - Données reçues:', req.body);
+    console.log('🔑 Session restaurant ID:', req.session.activeRestaurantId);
+
     const { table_number, room_id, capacity } = req.body;
     const activeRestaurantId = req.session.activeRestaurantId;
 
     // Vérifications
     if (!table_number || !room_id || !capacity) {
+      console.log('❌ Données manquantes:', { table_number, room_id, capacity });
       return res.status(400).json({ error: 'Numéro de table, salle et capacité sont obligatoires' });
     }
 
@@ -596,7 +615,14 @@ app.get('/api/orders', requireAuth, async (req, res) => {
 
 app.get('/api/rooms', requireAuth, async (req, res) => {
   try {
-    const rooms = await query('SELECT * FROM rooms ORDER BY name');
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    const rooms = await query('SELECT * FROM rooms WHERE restaurant_id = ? ORDER BY name', [activeRestaurantId]);
+    console.log(`📋 Salles récupérées pour restaurant ${activeRestaurantId}:`, rooms.length);
     res.json(rooms);
   } catch (error) {
     console.error('Erreur rooms:', error);
