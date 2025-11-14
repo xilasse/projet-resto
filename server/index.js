@@ -429,6 +429,161 @@ app.get('/api/tables', requireAuth, async (req, res) => {
   }
 });
 
+// Route pour créer une nouvelle table
+app.post('/api/tables', requireAuth, async (req, res) => {
+  try {
+    const { table_number, room_id, capacity } = req.body;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    // Vérifications
+    if (!table_number || !room_id || !capacity) {
+      return res.status(400).json({ error: 'Numéro de table, salle et capacité sont obligatoires' });
+    }
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    // Vérifier que l'utilisateur a les droits sur ce restaurant
+    if (req.session.userRole !== 'RESTAURATEUR' && req.session.userRole !== 'MANAGER') {
+      return res.status(403).json({ error: 'Droits insuffisants' });
+    }
+
+    // Vérifier que la salle appartient au restaurant actif
+    const existingRoom = await get(
+      'SELECT * FROM rooms WHERE id = ? AND restaurant_id = ?',
+      [room_id, activeRestaurantId]
+    );
+
+    if (!existingRoom) {
+      return res.status(404).json({ error: 'Salle non trouvée' });
+    }
+
+    // Vérifier que le numéro de table n'existe pas déjà dans cette salle
+    const existingTable = await get(
+      'SELECT * FROM tables WHERE table_number = ? AND room_id = ?',
+      [table_number, room_id]
+    );
+
+    if (existingTable) {
+      return res.status(400).json({ error: 'Ce numéro de table existe déjà dans cette salle' });
+    }
+
+    // Créer la table
+    const result = await run(
+      'INSERT INTO tables (table_number, room_id, capacity, status) VALUES (?, ?, ?, ?)',
+      [table_number, room_id, capacity, 'available']
+    );
+
+    res.json({
+      success: true,
+      message: 'Table créée avec succès',
+      table: {
+        id: result.lastID,
+        table_number,
+        room_id,
+        capacity,
+        status: 'available'
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur création table:', error);
+    res.status(500).json({ error: 'Erreur lors de la création de la table' });
+  }
+});
+
+// Route pour modifier une table
+app.put('/api/tables/:id', requireAuth, async (req, res) => {
+  try {
+    const tableId = req.params.id;
+    const { table_number, capacity, status } = req.body;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    // Vérifications
+    if (!table_number || !capacity) {
+      return res.status(400).json({ error: 'Numéro de table et capacité sont obligatoires' });
+    }
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    // Vérifier que l'utilisateur a les droits sur ce restaurant
+    if (req.session.userRole !== 'RESTAURATEUR' && req.session.userRole !== 'MANAGER') {
+      return res.status(403).json({ error: 'Droits insuffisants' });
+    }
+
+    // Vérifier que la table existe et appartient à une salle du restaurant actif
+    const existingTable = await get(`
+      SELECT t.*, r.restaurant_id
+      FROM tables t
+      JOIN rooms r ON t.room_id = r.id
+      WHERE t.id = ? AND r.restaurant_id = ?
+    `, [tableId, activeRestaurantId]);
+
+    if (!existingTable) {
+      return res.status(404).json({ error: 'Table non trouvée' });
+    }
+
+    // Mettre à jour la table
+    await run(
+      'UPDATE tables SET table_number = ?, capacity = ?, status = ? WHERE id = ?',
+      [table_number, capacity, status || existingTable.status, tableId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Table modifiée avec succès'
+    });
+
+  } catch (error) {
+    console.error('Erreur modification table:', error);
+    res.status(500).json({ error: 'Erreur lors de la modification de la table' });
+  }
+});
+
+// Route pour supprimer une table
+app.delete('/api/tables/:id', requireAuth, async (req, res) => {
+  try {
+    const tableId = req.params.id;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    // Vérifier que l'utilisateur a les droits sur ce restaurant
+    if (req.session.userRole !== 'RESTAURATEUR' && req.session.userRole !== 'MANAGER') {
+      return res.status(403).json({ error: 'Droits insuffisants' });
+    }
+
+    // Vérifier que la table existe et appartient à une salle du restaurant actif
+    const existingTable = await get(`
+      SELECT t.*, r.restaurant_id
+      FROM tables t
+      JOIN rooms r ON t.room_id = r.id
+      WHERE t.id = ? AND r.restaurant_id = ?
+    `, [tableId, activeRestaurantId]);
+
+    if (!existingTable) {
+      return res.status(404).json({ error: 'Table non trouvée' });
+    }
+
+    // Supprimer la table
+    await run('DELETE FROM tables WHERE id = ?', [tableId]);
+
+    res.json({
+      success: true,
+      message: 'Table supprimée avec succès'
+    });
+
+  } catch (error) {
+    console.error('Erreur suppression table:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression de la table' });
+  }
+});
+
 app.get('/api/orders', requireAuth, async (req, res) => {
   try {
     const orders = await query('SELECT * FROM orders ORDER BY created_at DESC');
@@ -446,6 +601,139 @@ app.get('/api/rooms', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Erreur rooms:', error);
     res.json([]);
+  }
+});
+
+// Route pour créer une nouvelle salle
+app.post('/api/rooms', requireAuth, async (req, res) => {
+  try {
+    const { name, color } = req.body;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    // Vérifications
+    if (!name || !color) {
+      return res.status(400).json({ error: 'Nom et couleur sont obligatoires' });
+    }
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    // Vérifier que l'utilisateur a les droits sur ce restaurant
+    if (req.session.userRole !== 'RESTAURATEUR' && req.session.userRole !== 'MANAGER') {
+      return res.status(403).json({ error: 'Droits insuffisants' });
+    }
+
+    // Créer la salle
+    const result = await run(
+      'INSERT INTO rooms (name, color, restaurant_id) VALUES (?, ?, ?)',
+      [name, color, activeRestaurantId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Salle créée avec succès',
+      room: {
+        id: result.lastID,
+        name,
+        color,
+        restaurant_id: activeRestaurantId
+      }
+    });
+
+  } catch (error) {
+    console.error('Erreur création salle:', error);
+    res.status(500).json({ error: 'Erreur lors de la création de la salle' });
+  }
+});
+
+// Route pour modifier une salle
+app.put('/api/rooms/:id', requireAuth, async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    const { name, color } = req.body;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    // Vérifications
+    if (!name || !color) {
+      return res.status(400).json({ error: 'Nom et couleur sont obligatoires' });
+    }
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    // Vérifier que l'utilisateur a les droits sur ce restaurant
+    if (req.session.userRole !== 'RESTAURATEUR' && req.session.userRole !== 'MANAGER') {
+      return res.status(403).json({ error: 'Droits insuffisants' });
+    }
+
+    // Vérifier que la salle appartient au restaurant actif
+    const existingRoom = await get(
+      'SELECT * FROM rooms WHERE id = ? AND restaurant_id = ?',
+      [roomId, activeRestaurantId]
+    );
+
+    if (!existingRoom) {
+      return res.status(404).json({ error: 'Salle non trouvée' });
+    }
+
+    // Mettre à jour la salle
+    await run(
+      'UPDATE rooms SET name = ?, color = ? WHERE id = ? AND restaurant_id = ?',
+      [name, color, roomId, activeRestaurantId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Salle modifiée avec succès'
+    });
+
+  } catch (error) {
+    console.error('Erreur modification salle:', error);
+    res.status(500).json({ error: 'Erreur lors de la modification de la salle' });
+  }
+});
+
+// Route pour supprimer une salle
+app.delete('/api/rooms/:id', requireAuth, async (req, res) => {
+  try {
+    const roomId = req.params.id;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    // Vérifier que l'utilisateur a les droits sur ce restaurant
+    if (req.session.userRole !== 'RESTAURATEUR' && req.session.userRole !== 'MANAGER') {
+      return res.status(403).json({ error: 'Droits insuffisants' });
+    }
+
+    // Vérifier que la salle appartient au restaurant actif
+    const existingRoom = await get(
+      'SELECT * FROM rooms WHERE id = ? AND restaurant_id = ?',
+      [roomId, activeRestaurantId]
+    );
+
+    if (!existingRoom) {
+      return res.status(404).json({ error: 'Salle non trouvée' });
+    }
+
+    // Supprimer d'abord toutes les tables associées
+    await run('DELETE FROM tables WHERE room_id = ?', [roomId]);
+
+    // Supprimer la salle
+    await run('DELETE FROM rooms WHERE id = ? AND restaurant_id = ?', [roomId, activeRestaurantId]);
+
+    res.json({
+      success: true,
+      message: 'Salle supprimée avec succès'
+    });
+
+  } catch (error) {
+    console.error('Erreur suppression salle:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression de la salle' });
   }
 });
 
