@@ -657,6 +657,16 @@ class AuthManager {
         }
 
         console.log('🏗️ Début génération HTML tableau...');
+        // Vérifier la visibilité des éléments
+        const teamSection = document.getElementById('teamSection');
+        const teamListView = document.getElementById('teamListView');
+        console.log('🔍 Visibilité section équipe:', {
+            teamSection: teamSection ? getComputedStyle(teamSection).display : 'non trouvé',
+            teamListView: teamListView ? getComputedStyle(teamListView).display : 'non trouvé',
+            teamSectionClasses: teamSection?.className,
+            teamListViewClasses: teamListView?.className
+        });
+
         tableBody.innerHTML = team.map(user => {
             console.log('👤 Traitement utilisateur:', user.first_name, user.last_name, user.role);
             const roleBadge = user.role === 'MANAGER' ? 'role-manager' : 'role-employee';
