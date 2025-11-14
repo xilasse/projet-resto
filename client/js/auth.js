@@ -414,7 +414,7 @@ class AuthManager {
 
                 // Recharger les informations du restaurant actif
                 setTimeout(() => {
-                    window.location.reload();
+                    this.loadUserProfile(); // Recharger seulement le profil au lieu de toute la page
                 }, 1500);
 
             } else {
@@ -615,7 +615,15 @@ class AuthManager {
     }
 
     displayTeam(team) {
+        // PRÉVENIR LES BOUCLES INFINIES
+        if (this.isDisplayingTeam) {
+            console.log('⚠️ Affichage équipe déjà en cours - ARRÊT pour éviter la boucle');
+            return;
+        }
+        this.isDisplayingTeam = true;
+
         console.log('🎯 Affichage équipe appelé avec:', team);
+        console.trace('📍 Stack trace pour voir qui appelle displayTeam:');
         const tableBody = document.getElementById('teamTableBody');
         console.log('📋 Element teamTableBody trouvé:', !!tableBody);
 
@@ -720,6 +728,12 @@ class AuthManager {
         }
 
         console.log('🔧 Styles inline appliqués pour forcer l\'affichage');
+
+        // Libérer le verrou après un délai pour permettre les prochains appels légitimes
+        setTimeout(() => {
+            this.isDisplayingTeam = false;
+            console.log('🔓 Verrou displayTeam libéré');
+        }, 1000);
 
         // Vérifier la visibilité du tableau parent
         const tableContainer = tableBody.closest('.table-container');

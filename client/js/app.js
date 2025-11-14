@@ -121,6 +121,9 @@ class RestaurantApp {
     }
 
     switchSection(section) {
+        console.log('🔄 switchSection appelé avec:', section);
+        console.trace('📍 Stack trace switchSection:');
+
         // Masquer toutes les sections
         document.querySelectorAll('.section').forEach(sec => {
             sec.classList.remove('active');
