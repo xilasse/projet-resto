@@ -562,6 +562,95 @@ app.post('/api/clear-active-restaurant', requireAuth, (req, res) => {
   }
 });
 
+// Route pour créer un nouveau restaurant (réservée aux restaurateurs)
+app.post('/api/create-restaurant', requireAuth, [
+  body('name').notEmpty().withMessage('Le nom du restaurant est requis'),
+  body('email').optional().isEmail().normalizeEmail(),
+  body('phone').optional(),
+  body('address').optional(),
+  body('description').optional()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  // Vérifier que l'utilisateur est bien un restaurateur
+  if (req.session.userRole !== 'RESTAURATEUR') {
+    return res.status(403).json({ error: 'Seuls les restaurateurs peuvent créer des restaurants' });
+  }
+
+  const { name, email, phone, address, description } = req.body;
+  const userId = req.session.userId;
+
+  try {
+    // Récupérer les informations de l'utilisateur
+    const user = await get('SELECT first_name, last_name, email FROM users WHERE id = ?', [userId]);
+
+    if (!user) {
+      return res.status(404).json({ error: 'Utilisateur introuvable' });
+    }
+
+    // Créer le nouveau restaurant (sans description pour l'instant)
+    const restaurantResult = await run(
+      'INSERT INTO restaurants (name, owner_name, email, phone, address) VALUES (?, ?, ?, ?, ?)',
+      [
+        name,
+        `${user.first_name} ${user.last_name}`,
+        email || user.email, // Utiliser l'email de l'utilisateur si pas fourni
+        phone,
+        address
+      ]
+    );
+
+    const restaurantId = restaurantResult.lastID;
+
+    // Lier l'utilisateur au nouveau restaurant comme propriétaire
+    await run(
+      'INSERT INTO user_restaurants (user_id, restaurant_id, role) VALUES (?, ?, ?)',
+      [userId, restaurantId, 'RESTAURATEUR']
+    );
+
+    // Mettre à jour la session avec le nouveau restaurant dans la liste
+    const updatedRestaurants = await query(`
+      SELECT r.id, r.name, ur.role as user_role
+      FROM restaurants r
+      JOIN user_restaurants ur ON r.id = ur.restaurant_id
+      WHERE ur.user_id = ?
+      ORDER BY r.name
+    `, [userId]);
+
+    req.session.restaurants = updatedRestaurants;
+
+    // Optionnellement, définir ce nouveau restaurant comme actif
+    req.session.activeRestaurantId = restaurantId;
+    req.session.activeRestaurantName = name;
+    req.session.activeRestaurantRole = 'RESTAURATEUR';
+
+    // Sauvegarder la session
+    req.session.save((err) => {
+      if (err) {
+        console.error('Erreur sauvegarde session après création restaurant:', err);
+        return res.status(500).json({ error: 'Restaurant créé mais erreur session' });
+      }
+
+      res.json({
+        success: true,
+        restaurant: {
+          id: restaurantId,
+          name: name,
+          role: 'RESTAURATEUR'
+        },
+        message: `Restaurant "${name}" créé avec succès !`
+      });
+    });
+
+  } catch (error) {
+    console.error('Erreur création restaurant:', error);
+    res.status(500).json({ error: 'Erreur lors de la création du restaurant' });
+  }
+});
+
 // Démarrage du serveur
 app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);

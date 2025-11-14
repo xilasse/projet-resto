@@ -22,6 +22,7 @@
                 <div class="restaurant-info">
                     <span class="current-restaurant" id="currentRestaurant">Chargement...</span>
                     <button id="switchRestaurantBtn" class="switch-restaurant-btn" title="Changer de restaurant" style="display: none;">🔄</button>
+                    <button id="createRestaurantBtn" class="create-restaurant-btn" title="Créer un nouveau restaurant" style="display: none;">➕</button>
                 </div>
                 <button id="logoutBtn" class="logout-btn">Déconnexion</button>
             </div>
@@ -319,6 +320,47 @@
                 <div class="form-actions">
                     <button type="submit" class="btn btn-primary">Sauvegarder les modifications</button>
                     <button type="button" class="btn btn-secondary" onclick="app.closeEditRoomModal()">Annuler</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal pour créer un nouveau restaurant -->
+    <div id="newRestaurantModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🏪 Créer un nouveau restaurant</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="newRestaurantForm">
+                <div class="form-group">
+                    <label for="newRestaurantName">Nom du restaurant *</label>
+                    <input type="text" id="newRestaurantName" required placeholder="Ex: Restaurant Le Délice">
+                </div>
+
+                <div class="form-group">
+                    <label for="newRestaurantEmail">Email de contact</label>
+                    <input type="email" id="newRestaurantEmail" placeholder="contact@restaurant.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="newRestaurantPhone">Téléphone</label>
+                    <input type="tel" id="newRestaurantPhone" placeholder="01 23 45 67 89">
+                </div>
+
+                <div class="form-group">
+                    <label for="newRestaurantAddress">Adresse complète</label>
+                    <textarea id="newRestaurantAddress" rows="3" placeholder="123 Rue de la Gastronomie, 75001 Paris"></textarea>
+                </div>
+
+                <div class="form-group">
+                    <label for="newRestaurantDescription">Description (optionnelle)</label>
+                    <textarea id="newRestaurantDescription" rows="2" placeholder="Cuisine traditionnelle française dans un cadre chaleureux..."></textarea>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelNewRestaurant">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Créer le restaurant</button>
                 </div>
             </form>
         </div>
