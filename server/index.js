@@ -450,13 +450,18 @@ app.post('/api/tables', requireAuth, async (req, res) => {
     console.log('🪑 Création table - Données reçues:', req.body);
     console.log('🔑 Session restaurant ID:', req.session.activeRestaurantId);
 
-    const { table_number, room_id, capacity } = req.body;
+    const { table_number, room_id, capacity, tableNumber, roomId } = req.body;
+
+    // Mapping des noms de paramètres (client vs serveur)
+    const finalTableNumber = table_number || tableNumber;
+    const finalRoomId = room_id || roomId;
+    const finalCapacity = capacity || 4; // Capacité par défaut
     const activeRestaurantId = req.session.activeRestaurantId;
 
     // Vérifications
-    if (!table_number || !room_id || !capacity) {
-      console.log('❌ Données manquantes:', { table_number, room_id, capacity });
-      return res.status(400).json({ error: 'Numéro de table, salle et capacité sont obligatoires' });
+    if (!finalTableNumber || !finalRoomId) {
+      console.log('❌ Données manquantes:', { finalTableNumber, finalRoomId, finalCapacity });
+      return res.status(400).json({ error: 'Numéro de table et salle sont obligatoires' });
     }
 
     if (!activeRestaurantId) {
@@ -469,22 +474,22 @@ app.post('/api/tables', requireAuth, async (req, res) => {
     }
 
     // Vérifier que la salle appartient au restaurant actif
-    console.log('🔍 Vérification salle:', { room_id, activeRestaurantId });
+    console.log('🔍 Vérification salle:', { finalRoomId, activeRestaurantId });
     const existingRoom = await get(
       'SELECT * FROM rooms WHERE id = ? AND restaurant_id = ?',
-      [room_id, activeRestaurantId]
+      [finalRoomId, activeRestaurantId]
     );
 
     console.log('🏠 Salle trouvée:', existingRoom);
     if (!existingRoom) {
-      console.log('❌ Salle non trouvée pour room_id:', room_id);
+      console.log('❌ Salle non trouvée pour room_id:', finalRoomId);
       return res.status(404).json({ error: 'Salle non trouvée' });
     }
 
     // Vérifier que le numéro de table n'existe pas déjà dans cette salle
     const existingTable = await get(
       'SELECT * FROM tables WHERE table_number = ? AND room_id = ?',
-      [table_number, room_id]
+      [finalTableNumber, finalRoomId]
     );
 
     if (existingTable) {
@@ -495,7 +500,7 @@ app.post('/api/tables', requireAuth, async (req, res) => {
     console.log('💾 Tentative création table...');
     const result = await run(
       'INSERT INTO tables (table_number, room_id, capacity, status) VALUES (?, ?, ?, ?)',
-      [table_number, room_id, capacity, 'available']
+      [finalTableNumber, finalRoomId, finalCapacity, 'available']
     );
 
     console.log('✅ Table créée avec ID:', result.lastID);
@@ -504,9 +509,9 @@ app.post('/api/tables', requireAuth, async (req, res) => {
       message: 'Table créée avec succès',
       table: {
         id: result.lastID,
-        table_number,
-        room_id,
-        capacity,
+        table_number: finalTableNumber,
+        room_id: finalRoomId,
+        capacity: finalCapacity,
         status: 'available'
       }
     });
