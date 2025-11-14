@@ -161,6 +161,7 @@ class AuthManager {
             // Charger les informations du restaurant actif si c'est un restaurateur
             if (result.user.role === 'RESTAURATEUR') {
                 this.loadActiveRestaurantInfo();
+                this.setupSwitchRestaurantButton();
                 this.showTeamTab();
             }
 
@@ -275,7 +276,10 @@ class AuthManager {
                 const switchBtn = document.getElementById('switchRestaurantBtn');
                 if (switchBtn && restaurants.length > 1) {
                     switchBtn.style.display = 'block';
-                    switchBtn.addEventListener('click', () => {
+                    // Supprimer les anciens listeners pour éviter les doublons
+                    switchBtn.replaceWith(switchBtn.cloneNode(true));
+                    const newSwitchBtn = document.getElementById('switchRestaurantBtn');
+                    newSwitchBtn.addEventListener('click', () => {
                         this.switchRestaurant();
                     });
                 }
@@ -284,7 +288,10 @@ class AuthManager {
                 const createBtn = document.getElementById('createRestaurantBtn');
                 if (createBtn) {
                     createBtn.style.display = 'block';
-                    createBtn.addEventListener('click', () => {
+                    // Supprimer les anciens listeners pour éviter les doublons
+                    createBtn.replaceWith(createBtn.cloneNode(true));
+                    const newCreateBtn = document.getElementById('createRestaurantBtn');
+                    newCreateBtn.addEventListener('click', () => {
                         this.openCreateRestaurantModal();
                     });
                 }
