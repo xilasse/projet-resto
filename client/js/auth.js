@@ -493,14 +493,28 @@ class AuthManager {
     }
 
     showTeamTab() {
+        // Afficher le bouton équipe dans la navigation principale
+        const teamTab = document.getElementById('teamTab');
+        if (teamTab) {
+            teamTab.style.display = 'block';
+            console.log('✅ Bouton équipe affiché dans la navigation');
+        }
+
+        // Afficher la section équipe
         const teamSection = document.getElementById('teamSection');
         if (teamSection) {
             teamSection.style.display = 'block';
+            teamSection.classList.add('active');
+            console.log('✅ Section équipe affichée et activée');
+        } else {
+            console.log('❌ Section équipe non trouvée dans le DOM');
         }
+
         this.setupTeamNavigation();
         // Charger immédiatement les données de l'équipe
         this.loadTeamData();
     }
+
 
     setupTeamNavigation() {
         // Navigation entre les vues équipe
