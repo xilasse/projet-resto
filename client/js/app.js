@@ -31,6 +31,14 @@ class RestaurantApp {
             this.openMenuItemModal();
         });
 
+        // Bouton d'ajout d'utilisateur
+        const addUserBtn = document.getElementById('addUserBtn');
+        if (addUserBtn) {
+            addUserBtn.addEventListener('click', () => {
+                authManager.openCreateUserModal();
+            });
+        }
+
         // Bouton d'initialisation du menu
         document.getElementById('initMenuBtn').addEventListener('click', async () => {
             if (confirm('Voulez-vous initialiser le menu avec des plats d\'exemple ? Cela ajoutera 20 plats dans toutes les catégories.')) {
@@ -142,6 +150,12 @@ class RestaurantApp {
                 break;
             case 'stock':
                 this.loadStock();
+                break;
+            case 'team':
+                // Charger les données de l'équipe via authManager
+                if (typeof authManager !== 'undefined' && authManager.loadTeamData) {
+                    authManager.loadTeamData();
+                }
                 break;
         }
     }

@@ -161,6 +161,7 @@ class AuthManager {
             // Charger les informations du restaurant actif si c'est un restaurateur
             if (result.user.role === 'RESTAURATEUR') {
                 this.loadActiveRestaurantInfo();
+                this.showTeamTab();
             }
 
         } catch (error) {
@@ -482,6 +483,272 @@ class AuthManager {
                 }
             }, 300);
         }, 4000);
+    }
+
+    showTeamTab() {
+        const teamTab = document.getElementById('teamTab');
+        if (teamTab) {
+            teamTab.style.display = 'block';
+        }
+    }
+
+    async loadTeamData() {
+        try {
+            const response = await fetch('/api/restaurant-team', {
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                const team = await response.json();
+                this.displayTeam(team);
+            } else {
+                console.error('Erreur chargement équipe:', response.status);
+                this.displayTeamError('Erreur lors du chargement de l\'équipe');
+            }
+        } catch (error) {
+            console.error('Erreur chargement équipe:', error);
+            this.displayTeamError('Erreur de connexion au serveur');
+        }
+    }
+
+    displayTeam(team) {
+        const tableBody = document.getElementById('teamTableBody');
+        const managerCountElement = document.getElementById('managerCount');
+        const employeeCountElement = document.getElementById('employeeCount');
+
+        if (!tableBody) return;
+
+        // Compter les rôles
+        const managers = team.filter(user => user.role === 'MANAGER');
+        const employees = team.filter(user => user.role === 'EMPLOYE');
+
+        if (managerCountElement) managerCountElement.textContent = managers.length;
+        if (employeeCountElement) employeeCountElement.textContent = employees.length;
+
+        // Afficher la liste
+        if (team.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="loading-message">
+                        Aucun membre d'équipe trouvé. Commencez par ajouter des utilisateurs !
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tableBody.innerHTML = team.map(user => {
+            const roleBadge = user.role === 'MANAGER' ? 'role-manager' : 'role-employee';
+            const roleText = user.role === 'MANAGER' ? 'Manager' : 'Employé';
+            const statusBadge = user.is_active ? 'status-active' : 'status-inactive';
+            const statusText = user.is_active ? 'Actif' : 'Inactif';
+
+            return `
+                <tr>
+                    <td>${user.first_name} ${user.last_name}</td>
+                    <td>${user.email}</td>
+                    <td>${user.phone || 'Non renseigné'}</td>
+                    <td><span class="role-badge ${roleBadge}">${roleText}</span></td>
+                    <td><span class="user-status ${statusBadge}">${statusText}</span></td>
+                    <td>
+                        <div class="user-actions">
+                            <button class="btn-edit" onclick="authManager.editUser(${user.id})" title="Modifier">
+                                ✏️
+                            </button>
+                            <button class="btn-delete" onclick="authManager.deleteUser(${user.id}, '${user.first_name} ${user.last_name}')" title="Supprimer">
+                                🗑️
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+    displayTeamError(message) {
+        const tableBody = document.getElementById('teamTableBody');
+        if (tableBody) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="6" class="loading-message" style="color: #e74c3c;">
+                        ${message}
+                        <br><br>
+                        <button onclick="authManager.loadTeamData()" style="padding: 8px 16px; background: #3498db; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Réessayer
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }
+    }
+
+    openCreateUserModal() {
+        const modal = document.getElementById('newUserModal');
+        const form = document.getElementById('newUserForm');
+
+        if (modal && form) {
+            form.reset();
+            modal.style.display = 'block';
+            this.setupCreateUserModal();
+        }
+    }
+
+    setupCreateUserModal() {
+        const modal = document.getElementById('newUserModal');
+        const form = document.getElementById('newUserForm');
+        const cancelBtn = document.getElementById('cancelNewUser');
+        const closeBtn = modal.querySelector('.close');
+
+        // Event listener pour fermer le modal
+        const closeModal = () => {
+            modal.style.display = 'none';
+            form.reset();
+        };
+
+        // Supprimer les anciens listeners pour éviter les doublons
+        if (cancelBtn) {
+            cancelBtn.replaceWith(cancelBtn.cloneNode(true));
+            document.getElementById('cancelNewUser').addEventListener('click', closeModal);
+        }
+
+        if (closeBtn) {
+            closeBtn.replaceWith(closeBtn.cloneNode(true));
+            modal.querySelector('.close').addEventListener('click', closeModal);
+        }
+
+        // Event listener pour la soumission du formulaire
+        if (form) {
+            form.replaceWith(form.cloneNode(true));
+            const newForm = document.getElementById('newUserForm');
+            newForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                this.createUser();
+            });
+        }
+
+        // Fermer le modal en cliquant à l'extérieur
+        window.addEventListener('click', (e) => {
+            if (e.target === modal) {
+                closeModal();
+            }
+        });
+    }
+
+    async createUser() {
+        const form = document.getElementById('newUserForm');
+        const submitBtn = form.querySelector('button[type="submit"]');
+
+        // Récupérer les données du formulaire
+        const formData = {
+            firstName: document.getElementById('newUserFirstName').value,
+            lastName: document.getElementById('newUserLastName').value,
+            email: document.getElementById('newUserEmail').value,
+            password: document.getElementById('newUserPassword').value,
+            role: document.getElementById('newUserRole').value,
+            phone: document.getElementById('newUserPhone').value,
+            notes: document.getElementById('newUserNotes').value
+        };
+
+        // Validation côté client
+        if (!formData.firstName.trim() || !formData.lastName.trim()) {
+            this.showNotification('Le prénom et le nom sont requis', 'error');
+            return;
+        }
+
+        if (!formData.email.trim()) {
+            this.showNotification('L\'email est requis', 'error');
+            return;
+        }
+
+        if (!formData.password || formData.password.length < 6) {
+            this.showNotification('Le mot de passe doit contenir au moins 6 caractères', 'error');
+            return;
+        }
+
+        if (!formData.role) {
+            this.showNotification('Le rôle est requis', 'error');
+            return;
+        }
+
+        // Afficher le loading
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Création en cours...';
+
+        try {
+            const response = await fetch('/api/create-user', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                credentials: 'include',
+                body: JSON.stringify(formData)
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                // Succès - fermer le modal et recharger l'équipe
+                document.getElementById('newUserModal').style.display = 'none';
+                form.reset();
+
+                // Afficher le message de succès
+                this.showNotification(result.message, 'success');
+
+                // Recharger les données de l'équipe
+                setTimeout(() => {
+                    this.loadTeamData();
+                }, 500);
+
+            } else {
+                // Erreur
+                if (result.errors && result.errors.length > 0) {
+                    this.showNotification(result.errors.map(err => err.msg).join(', '), 'error');
+                } else {
+                    this.showNotification(result.error || 'Erreur lors de la création de l\'utilisateur', 'error');
+                }
+            }
+
+        } catch (error) {
+            console.error('Erreur création utilisateur:', error);
+            this.showNotification('Erreur de connexion au serveur', 'error');
+        } finally {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Créer l\'utilisateur';
+        }
+    }
+
+    async deleteUser(userId, userName) {
+        const confirm = window.confirm(`Êtes-vous sûr de vouloir supprimer l'utilisateur "${userName}" ?\n\nCette action est irréversible.`);
+
+        if (!confirm) return;
+
+        try {
+            const response = await fetch(`/api/delete-user/${userId}`, {
+                method: 'DELETE',
+                credentials: 'include'
+            });
+
+            const result = await response.json();
+
+            if (response.ok) {
+                this.showNotification(result.message, 'success');
+                // Recharger les données de l'équipe
+                setTimeout(() => {
+                    this.loadTeamData();
+                }, 500);
+            } else {
+                this.showNotification(result.error || 'Erreur lors de la suppression', 'error');
+            }
+
+        } catch (error) {
+            console.error('Erreur suppression utilisateur:', error);
+            this.showNotification('Erreur de connexion au serveur', 'error');
+        }
+    }
+
+    editUser(userId) {
+        // Fonctionnalité d'édition à implémenter plus tard
+        this.showNotification('Fonctionnalité d\'édition en cours de développement', 'info');
     }
 }
 

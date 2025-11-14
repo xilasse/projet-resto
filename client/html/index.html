@@ -17,6 +17,7 @@
                 <button id="tablesTab" class="nav-btn">Tables</button>
                 <button id="ordersTab" class="nav-btn">Commandes</button>
                 <button id="stockTab" class="nav-btn">Stock</button>
+                <button id="teamTab" class="nav-btn" style="display: none;">Équipe</button>
             </nav>
             <div class="header-right">
                 <div class="restaurant-info">
@@ -323,6 +324,52 @@
                 </div>
             </form>
         </div>
+
+            <!-- Section Gestion d'Équipe -->
+            <section id="teamSection" class="section">
+                <div class="section-header">
+                    <h2>👥 Gestion d'Équipe</h2>
+                    <div class="header-buttons">
+                        <button id="addUserBtn" class="btn btn-primary">
+                            <span class="icon">👤➕</span>
+                            Ajouter un utilisateur
+                        </button>
+                    </div>
+                </div>
+
+                <div class="team-stats">
+                    <div class="stat-card">
+                        <div class="stat-number" id="managerCount">0</div>
+                        <div class="stat-label">Managers</div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-number" id="employeeCount">0</div>
+                        <div class="stat-label">Employés</div>
+                    </div>
+                </div>
+
+                <div class="team-list">
+                    <div class="table-container">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Nom complet</th>
+                                    <th>Email</th>
+                                    <th>Téléphone</th>
+                                    <th>Rôle</th>
+                                    <th>Statut</th>
+                                    <th>Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="teamTableBody">
+                                <tr>
+                                    <td colspan="6" class="loading-message">Chargement de l'équipe...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </section>
     </div>
 
     <!-- Modal pour créer un nouveau restaurant -->
@@ -361,6 +408,88 @@
                 <div class="form-actions">
                     <button type="button" class="btn btn-secondary" id="cancelNewRestaurant">Annuler</button>
                     <button type="submit" class="btn btn-primary">Créer le restaurant</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal pour créer un nouveau utilisateur -->
+    <div id="newUserModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>👤 Créer un nouvel utilisateur</h3>
+                <span class="close">&times;</span>
+            </div>
+            <form id="newUserForm">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="newUserFirstName">Prénom *</label>
+                        <input type="text" id="newUserFirstName" required placeholder="Jean">
+                    </div>
+                    <div class="form-group">
+                        <label for="newUserLastName">Nom *</label>
+                        <input type="text" id="newUserLastName" required placeholder="Dupont">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="newUserEmail">Email *</label>
+                    <input type="email" id="newUserEmail" required placeholder="jean.dupont@restaurant.com">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="newUserPassword">Mot de passe temporaire *</label>
+                        <input type="password" id="newUserPassword" required placeholder="Minimum 6 caractères">
+                        <small class="form-help">L'utilisateur devra changer ce mot de passe lors de sa première connexion</small>
+                    </div>
+                    <div class="form-group">
+                        <label for="newUserRole">Rôle *</label>
+                        <select id="newUserRole" required>
+                            <option value="">Sélectionnez un rôle</option>
+                            <option value="MANAGER">Manager</option>
+                            <option value="EMPLOYE">Employé</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="newUserPhone">Téléphone</label>
+                    <input type="tel" id="newUserPhone" placeholder="01 23 45 67 89">
+                </div>
+
+                <div class="form-group">
+                    <label for="newUserNotes">Notes (optionnelles)</label>
+                    <textarea id="newUserNotes" rows="2" placeholder="Informations complémentaires sur l'utilisateur..."></textarea>
+                </div>
+
+                <div class="permission-info">
+                    <h4>📋 Permissions selon le rôle</h4>
+                    <div class="role-permissions">
+                        <div class="permission-card">
+                            <strong>Manager</strong>
+                            <ul>
+                                <li>Gestion du menu (modification)</li>
+                                <li>Gestion des tables et commandes</li>
+                                <li>Consultation des plannings</li>
+                                <li>Gestion des événements</li>
+                            </ul>
+                        </div>
+                        <div class="permission-card">
+                            <strong>Employé</strong>
+                            <ul>
+                                <li>Consultation du menu</li>
+                                <li>Consultation des tables</li>
+                                <li>Visualisation des commandes</li>
+                                <li>Consultation des plannings</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <button type="button" class="btn btn-secondary" id="cancelNewUser">Annuler</button>
+                    <button type="submit" class="btn btn-primary">Créer l'utilisateur</button>
                 </div>
             </form>
         </div>

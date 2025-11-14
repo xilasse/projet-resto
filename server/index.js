@@ -651,6 +651,182 @@ app.post('/api/create-restaurant', requireAuth, [
   }
 });
 
+// Route pour créer un nouveau utilisateur (manager/employé) - réservée aux restaurateurs
+app.post('/api/create-user', requireAuth, [
+  body('firstName').notEmpty().withMessage('Le prénom est requis'),
+  body('lastName').notEmpty().withMessage('Le nom est requis'),
+  body('email').isEmail().normalizeEmail().withMessage('Email valide requis'),
+  body('password').isLength({ min: 6 }).withMessage('Mot de passe minimum 6 caractères'),
+  body('role').isIn(['MANAGER', 'EMPLOYE']).withMessage('Rôle invalide'),
+  body('phone').optional(),
+  body('notes').optional()
+], async (req, res) => {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
+
+  // Vérifier que l'utilisateur est bien un restaurateur
+  if (req.session.userRole !== 'RESTAURATEUR') {
+    return res.status(403).json({ error: 'Seuls les restaurateurs peuvent créer des utilisateurs' });
+  }
+
+  // Vérifier qu'un restaurant actif est sélectionné
+  const activeRestaurantId = req.session.activeRestaurantId;
+  if (!activeRestaurantId) {
+    return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+  }
+
+  const { firstName, lastName, email, password, role, phone, notes } = req.body;
+  const userId = req.session.userId;
+
+  try {
+    // Vérifier que le restaurateur a bien accès à ce restaurant
+    const restaurantAccess = await get(
+      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = ? AND ur.restaurant_id = ?',
+      [userId, activeRestaurantId]
+    );
+
+    if (!restaurantAccess || restaurantAccess.role !== 'RESTAURATEUR') {
+      return res.status(403).json({ error: 'Accès restaurant non autorisé' });
+    }
+
+    // Vérifier si l'email existe déjà
+    const existingUser = await get('SELECT id FROM users WHERE email = ?', [email]);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Cet email est déjà utilisé' });
+    }
+
+    // Hasher le mot de passe
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
+    // Créer l'utilisateur (sans notes pour l'instant)
+    const userResult = await run(
+      'INSERT INTO users (email, password_hash, first_name, last_name, phone, role) VALUES (?, ?, ?, ?, ?, ?)',
+      [email, hashedPassword, firstName, lastName, phone, role]
+    );
+
+    const newUserId = userResult.lastID;
+
+    // Lier l'utilisateur au restaurant
+    await run(
+      'INSERT INTO user_restaurants (user_id, restaurant_id, role) VALUES (?, ?, ?)',
+      [newUserId, activeRestaurantId, role]
+    );
+
+    res.json({
+      success: true,
+      user: {
+        id: newUserId,
+        firstName,
+        lastName,
+        email,
+        role,
+        phone
+      },
+      message: `Utilisateur ${firstName} ${lastName} créé avec succès !`
+    });
+
+  } catch (error) {
+    console.error('Erreur création utilisateur:', error);
+    res.status(500).json({ error: 'Erreur lors de la création de l\'utilisateur' });
+  }
+});
+
+// Route pour récupérer l'équipe d'un restaurant
+app.get('/api/restaurant-team', requireAuth, async (req, res) => {
+  try {
+    // Vérifier qu'un restaurant actif est sélectionné
+    const activeRestaurantId = req.session.activeRestaurantId;
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    const userId = req.session.userId;
+
+    // Vérifier l'accès au restaurant
+    const restaurantAccess = await get(
+      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = ? AND ur.restaurant_id = ?',
+      [userId, activeRestaurantId]
+    );
+
+    if (!restaurantAccess || (restaurantAccess.role !== 'RESTAURATEUR' && req.session.userRole !== 'SUPER_ADMIN')) {
+      return res.status(403).json({ error: 'Accès restaurant non autorisé' });
+    }
+
+    // Récupérer l'équipe du restaurant
+    const team = await query(`
+      SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.role, u.is_active, ur.role as restaurant_role
+      FROM users u
+      JOIN user_restaurants ur ON u.id = ur.user_id
+      WHERE ur.restaurant_id = ? AND u.role != 'SUPER_ADMIN'
+      ORDER BY u.role, u.last_name, u.first_name
+    `, [activeRestaurantId]);
+
+    res.json(team);
+
+  } catch (error) {
+    console.error('Erreur récupération équipe:', error);
+    res.status(500).json({ error: 'Erreur lors de la récupération de l\'équipe' });
+  }
+});
+
+// Route pour supprimer un utilisateur
+app.delete('/api/delete-user/:id', requireAuth, async (req, res) => {
+  try {
+    const userIdToDelete = req.params.id;
+    const currentUserId = req.session.userId;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    // Vérifications de sécurité
+    if (req.session.userRole !== 'RESTAURATEUR') {
+      return res.status(403).json({ error: 'Seuls les restaurateurs peuvent supprimer des utilisateurs' });
+    }
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    // Ne pas permettre l'auto-suppression
+    if (userIdToDelete == currentUserId) {
+      return res.status(400).json({ error: 'Vous ne pouvez pas vous supprimer vous-même' });
+    }
+
+    // Vérifier que l'utilisateur à supprimer appartient bien au restaurant
+    const userAccess = await get(
+      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = ? AND ur.restaurant_id = ?',
+      [userIdToDelete, activeRestaurantId]
+    );
+
+    if (!userAccess) {
+      return res.status(404).json({ error: 'Utilisateur non trouvé dans ce restaurant' });
+    }
+
+    // Supprimer la liaison restaurant
+    await run(
+      'DELETE FROM user_restaurants WHERE user_id = ? AND restaurant_id = ?',
+      [userIdToDelete, activeRestaurantId]
+    );
+
+    // Si l'utilisateur n'a plus d'autre restaurant, le désactiver
+    const otherRestaurants = await query(
+      'SELECT COUNT(*) as count FROM user_restaurants WHERE user_id = ?',
+      [userIdToDelete]
+    );
+
+    if (otherRestaurants[0].count === 0) {
+      await run('UPDATE users SET is_active = 0 WHERE id = ?', [userIdToDelete]);
+    }
+
+    res.json({ success: true, message: 'Utilisateur supprimé avec succès' });
+
+  } catch (error) {
+    console.error('Erreur suppression utilisateur:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression de l\'utilisateur' });
+  }
+});
+
 // Démarrage du serveur
 app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);
