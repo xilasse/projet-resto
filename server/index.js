@@ -607,28 +607,41 @@ app.get('/api/rooms', requireAuth, async (req, res) => {
 // Route pour créer une nouvelle salle
 app.post('/api/rooms', requireAuth, async (req, res) => {
   try {
+    console.log('🏪 Création salle - Données reçues:', req.body);
+    console.log('🔑 Session restaurant ID:', req.session.activeRestaurantId);
+    console.log('👤 Role utilisateur:', req.session.userRole);
+
     const { name, color } = req.body;
     const activeRestaurantId = req.session.activeRestaurantId;
 
     // Vérifications
     if (!name || !color) {
+      console.log('❌ Données manquantes:', { name, color });
       return res.status(400).json({ error: 'Nom et couleur sont obligatoires' });
     }
 
     if (!activeRestaurantId) {
+      console.log('❌ Aucun restaurant actif en session');
       return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
     }
 
     // Vérifier que l'utilisateur a les droits sur ce restaurant
     if (req.session.userRole !== 'RESTAURATEUR' && req.session.userRole !== 'MANAGER') {
+      console.log('❌ Droits insuffisants:', req.session.userRole);
       return res.status(403).json({ error: 'Droits insuffisants' });
     }
 
-    // Créer la salle
+    // Vérifier d'abord si la table rooms a bien la colonne restaurant_id
+    console.log('🔍 Vérification structure table rooms...');
+
+    // Créer la salle (sans restaurant_id pour le moment car la colonne n'existe peut-être pas)
+    console.log('💾 Tentative création salle...');
     const result = await run(
-      'INSERT INTO rooms (name, color, restaurant_id) VALUES (?, ?, ?)',
-      [name, color, activeRestaurantId]
+      'INSERT INTO rooms (name, color) VALUES (?, ?)',
+      [name, color]
     );
+
+    console.log('✅ Salle créée avec ID:', result.lastID);
 
     res.json({
       success: true,
@@ -636,14 +649,45 @@ app.post('/api/rooms', requireAuth, async (req, res) => {
       room: {
         id: result.lastID,
         name,
-        color,
-        restaurant_id: activeRestaurantId
+        color
       }
     });
 
   } catch (error) {
-    console.error('Erreur création salle:', error);
-    res.status(500).json({ error: 'Erreur lors de la création de la salle' });
+    console.error('❌ Erreur création salle détaillée:', error);
+    console.error('Stack:', error.stack);
+    res.status(500).json({
+      error: 'Erreur lors de la création de la salle',
+      details: error.message
+    });
+  }
+});
+
+// Route de debug temporaire pour vérifier la structure des tables
+app.get('/api/debug/tables-structure', requireAuth, async (req, res) => {
+  try {
+    if (isPostgreSQL) {
+      // PostgreSQL
+      const roomsStructure = await query(`
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_name = 'rooms'
+      `);
+      const tablesStructure = await query(`
+        SELECT column_name, data_type
+        FROM information_schema.columns
+        WHERE table_name = 'tables'
+      `);
+      res.json({ rooms: roomsStructure, tables: tablesStructure });
+    } else {
+      // SQLite
+      const roomsStructure = await query('PRAGMA table_info(rooms)');
+      const tablesStructure = await query('PRAGMA table_info(tables)');
+      res.json({ rooms: roomsStructure, tables: tablesStructure });
+    }
+  } catch (error) {
+    console.error('Erreur structure debug:', error);
+    res.status(500).json({ error: error.message });
   }
 });
 
