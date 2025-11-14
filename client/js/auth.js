@@ -696,6 +696,17 @@ class AuthManager {
         }).join('');
 
         console.log('✅ HTML injecté dans tableBody');
+        console.log('📋 Contenu final du tableau:', tableBody.innerHTML.substring(0, 300) + '...');
+        console.log('🔍 Nombre d\'éléments tr dans tableBody:', tableBody.querySelectorAll('tr').length);
+
+        // Vérifier la visibilité du tableau parent
+        const tableContainer = tableBody.closest('.table-container');
+        const table = tableBody.closest('table');
+        console.log('📊 Visibilité tableau:', {
+            tableDisplay: table ? getComputedStyle(table).display : 'non trouvé',
+            tableContainerDisplay: tableContainer ? getComputedStyle(tableContainer).display : 'non trouvé',
+            tableHeight: table ? getComputedStyle(table).height : 'non trouvé'
+        });
     }
 
     displayTeamError(message) {
