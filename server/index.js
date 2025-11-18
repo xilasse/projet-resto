@@ -64,6 +64,17 @@ app.get('/restaurant-selector.html', (req, res) => {
   res.sendFile('restaurant-selector.html', { root: '../client/html' });
 });
 
+// Route de test pour vérifier le déploiement
+app.get('/api/version', (req, res) => {
+  res.json({
+    version: '2.1',
+    commit: '7d036d6',
+    database: isPostgreSQL ? 'PostgreSQL' : 'SQLite',
+    postgresqlFixDeployed: true,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Redirection intelligente selon le rôle
 app.get('/', (req, res) => {
   console.log('Route / appelée, session:', {
