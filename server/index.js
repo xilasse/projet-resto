@@ -1026,7 +1026,9 @@ app.post('/api/create-restaurant', requireAuth, [
       );
     }
 
-    const restaurantId = isPostgreSQL ? restaurantResult[0].id : restaurantResult.lastID;
+    const restaurantId = isPostgreSQL
+      ? restaurantResult[0].id
+      : (restaurantResult.lastID || restaurantResult.insertId || await get('SELECT last_insert_rowid() as id').then(r => r.id));
 
     // Lier l'utilisateur au nouveau restaurant comme propriétaire
     await run(
