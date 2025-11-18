@@ -104,6 +104,10 @@ app.get('/', (req, res) => {
       console.log('Redirection vers index.html pour restaurateur');
       return res.sendFile('index.html', { root: '../client/html' });
     }
+  } else if (req.session.userRole === 'MANAGER') {
+    // Pour les managers, même interface que les restaurateurs mais sans certaines fonctions
+    console.log('Redirection vers index.html pour manager');
+    return res.sendFile('index.html', { root: '../client/html' });
   } else {
     console.log('Redirection vers index.html pour utilisateur normal');
     return res.sendFile('index.html', { root: '../client/html' });
@@ -130,6 +134,7 @@ const PERMISSIONS = {
     menu: ['view', 'edit'],
     tables: ['view', 'edit'],
     orders: ['view', 'manage'],
+    staff: ['view', 'edit', 'create'],
     schedules: ['view', 'edit'],
     events: ['view', 'edit']
   },
@@ -1188,9 +1193,9 @@ app.post('/api/create-user', requireAuth, [
     return res.status(400).json({ errors: errors.array() });
   }
 
-  // Vérifier que l'utilisateur est bien un restaurateur
-  if (req.session.userRole !== 'RESTAURATEUR') {
-    return res.status(403).json({ error: 'Seuls les restaurateurs peuvent créer des utilisateurs' });
+  // Vérifier que l'utilisateur a les droits (restaurateur ou manager)
+  if (req.session.userRole !== 'RESTAURATEUR' && req.session.userRole !== 'MANAGER') {
+    return res.status(403).json({ error: 'Droits insuffisants pour créer des utilisateurs' });
   }
 
   // Vérifier qu'un restaurant actif est sélectionné
@@ -1273,7 +1278,7 @@ app.get('/api/restaurant-team', requireAuth, async (req, res) => {
       [userId, activeRestaurantId]
     );
 
-    if (!restaurantAccess || (restaurantAccess.role !== 'RESTAURATEUR' && req.session.userRole !== 'SUPER_ADMIN')) {
+    if (!restaurantAccess || (restaurantAccess.role !== 'RESTAURATEUR' && restaurantAccess.role !== 'MANAGER' && req.session.userRole !== 'SUPER_ADMIN')) {
       return res.status(403).json({ error: 'Accès restaurant non autorisé' });
     }
 
@@ -1302,8 +1307,8 @@ app.delete('/api/delete-user/:id', requireAuth, async (req, res) => {
     const activeRestaurantId = req.session.activeRestaurantId;
 
     // Vérifications de sécurité
-    if (req.session.userRole !== 'RESTAURATEUR') {
-      return res.status(403).json({ error: 'Seuls les restaurateurs peuvent supprimer des utilisateurs' });
+    if (req.session.userRole !== 'RESTAURATEUR' && req.session.userRole !== 'MANAGER') {
+      return res.status(403).json({ error: 'Droits insuffisants pour supprimer des utilisateurs' });
     }
 
     if (!activeRestaurantId) {
@@ -1357,8 +1362,8 @@ app.put('/api/update-user/:id', requireAuth, async (req, res) => {
     const activeRestaurantId = req.session.activeRestaurantId;
 
     // Vérifications de sécurité
-    if (req.session.userRole !== 'RESTAURATEUR') {
-      return res.status(403).json({ error: 'Seuls les restaurateurs peuvent modifier des utilisateurs' });
+    if (req.session.userRole !== 'RESTAURATEUR' && req.session.userRole !== 'MANAGER') {
+      return res.status(403).json({ error: 'Droits insuffisants pour modifier des utilisateurs' });
     }
 
     if (!activeRestaurantId) {

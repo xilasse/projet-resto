@@ -159,8 +159,8 @@ class AuthManager {
             // Configurer le bouton de déconnexion s'il existe
             this.setupLogoutButton();
 
-            // Charger les informations du restaurant actif si c'est un restaurateur
-            if (result.user.role === 'RESTAURATEUR') {
+            // Charger les informations du restaurant actif si c'est un restaurateur ou manager
+            if (result.user.role === 'RESTAURATEUR' || result.user.role === 'MANAGER') {
                 this.loadActiveRestaurantInfo();
                 this.setupSwitchRestaurantButton();
                 this.showTeamTab();
@@ -274,8 +274,12 @@ class AuthManager {
             if (response.ok) {
                 const restaurants = await response.json();
 
+                // Récupérer le rôle de l'utilisateur
+                const userRole = await this.getUserRole();
+
                 const switchBtn = document.getElementById('switchRestaurantBtn');
-                if (switchBtn && restaurants.length > 1) {
+                if (switchBtn && restaurants.length > 1 && userRole === 'RESTAURATEUR') {
+                    // Seuls les restaurateurs peuvent changer de restaurant
                     switchBtn.style.display = 'block';
                     // Supprimer les anciens listeners pour éviter les doublons
                     switchBtn.replaceWith(switchBtn.cloneNode(true));
@@ -285,9 +289,9 @@ class AuthManager {
                     });
                 }
 
-                // Afficher le bouton de création de restaurant pour les restaurateurs
+                // Afficher le bouton de création de restaurant SEULEMENT pour les restaurateurs
                 const createBtn = document.getElementById('createRestaurantBtn');
-                if (createBtn) {
+                if (createBtn && userRole === 'RESTAURATEUR') {
                     createBtn.style.display = 'block';
                     // Supprimer les anciens listeners pour éviter les doublons
                     createBtn.replaceWith(createBtn.cloneNode(true));
@@ -295,6 +299,9 @@ class AuthManager {
                     newCreateBtn.addEventListener('click', () => {
                         this.openCreateRestaurantModal();
                     });
+                } else if (createBtn) {
+                    // Masquer le bouton pour les managers
+                    createBtn.style.display = 'none';
                 }
             }
         } catch (error) {
@@ -1149,6 +1156,23 @@ class AuthManager {
                     </button>
                 </div>
             `;
+        }
+    }
+
+    async getUserRole() {
+        try {
+            const response = await fetch('/api/check-auth', {
+                credentials: 'include'
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                return result.user?.role || null;
+            }
+            return null;
+        } catch (error) {
+            console.error('Erreur récupération rôle utilisateur:', error);
+            return null;
         }
     }
 
