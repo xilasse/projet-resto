@@ -981,13 +981,14 @@ app.post('/api/create-restaurant', requireAuth, [
       return res.status(404).json({ error: 'Utilisateur introuvable' });
     }
 
-    // Créer le nouveau restaurant (sans description pour l'instant)
+    // Créer le nouveau restaurant (sans password_hash car c'est un restaurant géré par un utilisateur existant)
     const restaurantResult = await run(
-      'INSERT INTO restaurants (name, owner_name, email, phone, address) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES (?, ?, ?, ?, ?, ?)',
       [
         name,
         `${user.first_name} ${user.last_name}`,
         email || user.email, // Utiliser l'email de l'utilisateur si pas fourni
+        'MANAGED_RESTAURANT', // Placeholder pour indiquer que c'est un restaurant géré via user_restaurants
         phone,
         address
       ]
@@ -1037,7 +1038,15 @@ app.post('/api/create-restaurant', requireAuth, [
 
   } catch (error) {
     console.error('Erreur création restaurant:', error);
-    res.status(500).json({ error: 'Erreur lors de la création du restaurant' });
+    console.error('Détails erreur:', error.message);
+    console.error('Stack trace:', error.stack);
+
+    // Fournir plus de détails sur l'erreur en développement
+    const errorMessage = process.env.NODE_ENV === 'development'
+      ? `Erreur lors de la création du restaurant: ${error.message}`
+      : 'Erreur lors de la création du restaurant';
+
+    res.status(500).json({ error: errorMessage });
   }
 });
 

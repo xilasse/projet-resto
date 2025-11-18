@@ -544,19 +544,23 @@ class AuthManager {
     }
 
     switchTeamView(viewId, tabId) {
+        // Protection contre les appels multiples rapides
+        if (this.switchingTeamView) {
+            console.log('⏸️ Switch équipe déjà en cours, ignoré');
+            return;
+        }
+        this.switchingTeamView = true;
+
         console.log('🔄 Switch vers vue équipe:', viewId, 'avec tab:', tabId);
 
         // Masquer toutes les vues
         const teamViews = document.querySelectorAll('.team-view');
-        console.log('📋 Nombre de vues équipe trouvées:', teamViews.length);
         teamViews.forEach(view => {
             view.classList.remove('active');
-            console.log('➖ Vue désactivée:', view.id);
         });
 
         // Désactiver tous les boutons
         const teamNavBtns = document.querySelectorAll('.team-nav-btn');
-        console.log('🔘 Nombre de boutons navigation équipe trouvés:', teamNavBtns.length);
         teamNavBtns.forEach(btn => {
             btn.classList.remove('active');
         });
@@ -565,16 +569,17 @@ class AuthManager {
         const targetView = document.getElementById(viewId);
         const targetTab = document.getElementById(tabId);
 
-        console.log('🎯 Vue cible trouvée:', !!targetView, 'Tab cible trouvé:', !!targetTab);
-
         if (targetView) {
             targetView.classList.add('active');
-            console.log('✅ Vue activée:', viewId);
         }
         if (targetTab) {
             targetTab.classList.add('active');
-            console.log('✅ Tab activé:', tabId);
         }
+
+        // Libérer le verrou après un délai
+        setTimeout(() => {
+            this.switchingTeamView = false;
+        }, 100);
 
         // Charger les données selon la vue
         switch(viewId) {
