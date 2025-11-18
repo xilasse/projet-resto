@@ -1327,6 +1327,7 @@ app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);
   console.log(`🌍 Environnement: ${process.env.NODE_ENV || 'development'}`);
   console.log(`💾 Base de données: ${isPostgreSQL ? 'PostgreSQL (Railway)' : 'SQLite (local)'}`);
+  console.log(`🚀 SERVEUR VERSION 2.1 - CORRECTION POSTGRESQL DEPLOYEE`);
 });
 
 module.exports = app;
