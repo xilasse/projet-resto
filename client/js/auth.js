@@ -500,12 +500,12 @@ class AuthManager {
             console.log('✅ Bouton équipe affiché dans la navigation');
         }
 
-        // Afficher la section équipe
+        // Préparer la section équipe (mais ne pas l'activer automatiquement)
         const teamSection = document.getElementById('teamSection');
         if (teamSection) {
             teamSection.style.display = 'block';
-            teamSection.classList.add('active');
-            console.log('✅ Section équipe affichée et activée');
+            // Ne pas ajouter 'active' automatiquement - laissser l'utilisateur naviguer
+            console.log('✅ Section équipe préparée (disponible pour navigation)');
         } else {
             console.log('❌ Section équipe non trouvée dans le DOM');
         }
@@ -707,27 +707,9 @@ class AuthManager {
         console.log('📋 Contenu final du tableau:', tableBody.innerHTML.substring(0, 300) + '...');
         console.log('🔍 Nombre d\'éléments tr dans tableBody:', tableBody.querySelectorAll('tr').length);
 
-        // SOLUTION TEMPORAIRE : Forcer l'affichage avec du CSS inline
-        const table = tableBody.closest('table');
-
-        if (table) {
-            table.style.cssText = 'display: table !important; width: 100% !important; visibility: visible !important; opacity: 1 !important; z-index: 1001 !important; background: white !important; border: 2px solid red !important; min-height: 200px !important;';
-        }
-
-        // Forcer aussi le tableBody
-        if (tableBody) {
-            tableBody.style.cssText = 'display: table-row-group !important; visibility: visible !important; opacity: 1 !important; background: white !important;';
-        }
-
-        if (teamSection) {
-            teamSection.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 999 !important; background: white !important; min-height: 500px !important;';
-        }
-
-        if (teamListView) {
-            teamListView.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 1000 !important; background: white !important; min-height: 400px !important;';
-        }
-
-        console.log('🔧 Styles inline appliqués pour forcer l\'affichage');
+        // Les styles d'affichage sont maintenant gérés par la navigation normale
+        // La section équipe ne doit être visible que quand l'onglet équipe est sélectionné
+        console.log('✅ Affichage de l\'équipe terminé - géré par navigation normale');
 
         // Libérer le verrou après un délai pour permettre les prochains appels légitimes
         setTimeout(() => {
