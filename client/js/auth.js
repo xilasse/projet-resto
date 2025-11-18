@@ -500,11 +500,12 @@ class AuthManager {
             console.log('✅ Bouton équipe affiché dans la navigation');
         }
 
-        // Préparer la section équipe (mais ne pas l'activer automatiquement)
+        // Préparer la section équipe (laisser le CSS gérer l'affichage)
         const teamSection = document.getElementById('teamSection');
         if (teamSection) {
-            teamSection.style.display = 'block';
-            // Ne pas ajouter 'active' automatiquement - laissser l'utilisateur naviguer
+            // Supprimer tout style inline qui pourrait interférer avec le CSS
+            teamSection.style.display = '';
+            // Ne pas ajouter 'active' automatiquement - laisser l'utilisateur naviguer
             console.log('✅ Section équipe préparée (disponible pour navigation)');
         } else {
             console.log('❌ Section équipe non trouvée dans le DOM');
