@@ -985,19 +985,37 @@ app.post('/api/create-restaurant', requireAuth, [
     // Générer un email unique pour le restaurant si aucun fourni
     const restaurantEmail = email || `${name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}@restaurant.local`;
 
-    const restaurantResult = await run(
-      'INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES (?, ?, ?, ?, ?, ?)',
-      [
-        name,
-        `${user.first_name} ${user.last_name}`,
-        restaurantEmail,
-        'MANAGED_RESTAURANT', // Placeholder pour indiquer que c'est un restaurant géré via user_restaurants
-        phone,
-        address
-      ]
-    );
+    // Requête adaptée selon le type de base de données
+    let restaurantResult;
+    if (isPostgreSQL) {
+      // PostgreSQL - utiliser RETURNING pour récupérer l'ID
+      restaurantResult = await query(
+        'INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+        [
+          name,
+          `${user.first_name} ${user.last_name}`,
+          restaurantEmail,
+          'MANAGED_RESTAURANT',
+          phone,
+          address
+        ]
+      );
+    } else {
+      // SQLite - utiliser run normal
+      restaurantResult = await run(
+        'INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES (?, ?, ?, ?, ?, ?)',
+        [
+          name,
+          `${user.first_name} ${user.last_name}`,
+          restaurantEmail,
+          'MANAGED_RESTAURANT',
+          phone,
+          address
+        ]
+      );
+    }
 
-    const restaurantId = restaurantResult.lastID;
+    const restaurantId = isPostgreSQL ? restaurantResult[0].id : restaurantResult.lastID;
 
     // Lier l'utilisateur au nouveau restaurant comme propriétaire
     await run(
