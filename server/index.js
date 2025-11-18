@@ -982,12 +982,15 @@ app.post('/api/create-restaurant', requireAuth, [
     }
 
     // Créer le nouveau restaurant (sans password_hash car c'est un restaurant géré par un utilisateur existant)
+    // Générer un email unique pour le restaurant si aucun fourni
+    const restaurantEmail = email || `${name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}@restaurant.local`;
+
     const restaurantResult = await run(
       'INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES (?, ?, ?, ?, ?, ?)',
       [
         name,
         `${user.first_name} ${user.last_name}`,
-        email || user.email, // Utiliser l'email de l'utilisateur si pas fourni
+        restaurantEmail,
         'MANAGED_RESTAURANT', // Placeholder pour indiquer que c'est un restaurant géré via user_restaurants
         phone,
         address
@@ -1041,10 +1044,17 @@ app.post('/api/create-restaurant', requireAuth, [
     console.error('Détails erreur:', error.message);
     console.error('Stack trace:', error.stack);
 
-    // Fournir plus de détails sur l'erreur en développement
-    const errorMessage = process.env.NODE_ENV === 'development'
-      ? `Erreur lors de la création du restaurant: ${error.message}`
-      : 'Erreur lors de la création du restaurant';
+    // Gérer les erreurs spécifiques
+    let errorMessage = 'Erreur lors de la création du restaurant';
+
+    if (error.message && error.message.includes('UNIQUE constraint failed')) {
+      errorMessage = 'Un restaurant avec cet email existe déjà';
+    } else if (error.code === '23505' && error.constraint && error.constraint.includes('email')) {
+      // PostgreSQL unique constraint violation
+      errorMessage = 'Un restaurant avec cet email existe déjà';
+    } else if (process.env.NODE_ENV === 'development') {
+      errorMessage = `Erreur lors de la création du restaurant: ${error.message}`;
+    }
 
     res.status(500).json({ error: errorMessage });
   }

@@ -725,6 +725,7 @@ class AuthManager {
 
         // Vérifier la visibilité du tableau parent
         const tableContainer = tableBody.closest('.table-container');
+        const table = tableBody.closest('table');
         console.log('📊 Visibilité tableau:', {
             tableDisplay: table ? getComputedStyle(table).display : 'non trouvé',
             tableContainerDisplay: tableContainer ? getComputedStyle(tableContainer).display : 'non trouvé',
