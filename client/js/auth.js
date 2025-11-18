@@ -1,4 +1,5 @@
 // Gestion de l'authentification
+// FORCE REDEPLOY 2024-11-18 v2.0 - FIX TABLE ERROR
 
 class AuthManager {
     constructor() {
