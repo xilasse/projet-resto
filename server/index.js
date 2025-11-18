@@ -76,63 +76,6 @@ app.get('/api/version', (req, res) => {
   });
 });
 
-// Route de debug pour tester la création de restaurant
-app.post('/api/debug-restaurant', requireAuth, async (req, res) => {
-  try {
-    console.log('=== DEBUG CREATE RESTAURANT ===');
-    console.log('Session userId:', req.session.userId);
-    console.log('Session userRole:', req.session.userRole);
-    console.log('Body:', req.body);
-    console.log('IsPostgreSQL:', isPostgreSQL);
-
-    const { name } = req.body;
-    if (!name) {
-      return res.status(400).json({ error: 'Name required for debug' });
-    }
-
-    // Test de récupération utilisateur
-    const user = await get('SELECT first_name, last_name, email FROM users WHERE id = ?', [req.session.userId]);
-    console.log('User found:', user);
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found', userId: req.session.userId });
-    }
-
-    // Test d'insertion simple
-    const testEmail = `debug-${Date.now()}@test.com`;
-    console.log('Attempting insert with email:', testEmail);
-
-    const result = await run(
-      'INSERT INTO restaurants (name, owner_name, email, password_hash) VALUES (?, ?, ?, ?)',
-      [name, `${user.first_name} ${user.last_name}`, testEmail, 'DEBUG_TEST']
-    );
-
-    console.log('Insert result:', result);
-
-    res.json({
-      success: true,
-      debug: {
-        insertResult: result,
-        lastID: result.lastID,
-        insertId: result.insertId,
-        user: user,
-        isPostgreSQL: isPostgreSQL
-      }
-    });
-
-  } catch (error) {
-    console.error('=== DEBUG ERROR ===');
-    console.error('Error message:', error.message);
-    console.error('Error code:', error.code);
-    console.error('Error stack:', error.stack);
-
-    res.status(500).json({
-      error: error.message,
-      code: error.code,
-      stack: error.stack
-    });
-  }
-});
 
 // Redirection intelligente selon le rôle
 app.get('/', (req, res) => {
@@ -223,6 +166,64 @@ const requireAuth = (req, res, next) => {
   }
   next();
 };
+
+// Route de debug pour tester la création de restaurant
+app.post('/api/debug-restaurant', requireAuth, async (req, res) => {
+  try {
+    console.log('=== DEBUG CREATE RESTAURANT ===');
+    console.log('Session userId:', req.session.userId);
+    console.log('Session userRole:', req.session.userRole);
+    console.log('Body:', req.body);
+    console.log('IsPostgreSQL:', isPostgreSQL);
+
+    const { name } = req.body;
+    if (!name) {
+      return res.status(400).json({ error: 'Name required for debug' });
+    }
+
+    // Test de récupération utilisateur
+    const user = await get('SELECT first_name, last_name, email FROM users WHERE id = ?', [req.session.userId]);
+    console.log('User found:', user);
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found', userId: req.session.userId });
+    }
+
+    // Test d'insertion simple
+    const testEmail = `debug-${Date.now()}@test.com`;
+    console.log('Attempting insert with email:', testEmail);
+
+    const result = await run(
+      'INSERT INTO restaurants (name, owner_name, email, password_hash) VALUES (?, ?, ?, ?)',
+      [name, `${user.first_name} ${user.last_name}`, testEmail, 'DEBUG_TEST']
+    );
+
+    console.log('Insert result:', result);
+
+    res.json({
+      success: true,
+      debug: {
+        insertResult: result,
+        lastID: result.lastID,
+        insertId: result.insertId,
+        user: user,
+        isPostgreSQL: isPostgreSQL
+      }
+    });
+
+  } catch (error) {
+    console.error('=== DEBUG ERROR ===');
+    console.error('Error message:', error.message);
+    console.error('Error code:', error.code);
+    console.error('Error stack:', error.stack);
+
+    res.status(500).json({
+      error: error.message,
+      code: error.code,
+      stack: error.stack
+    });
+  }
+});
 
 // Middleware pour vérifier l'accès au restaurant
 const checkRestaurantAccess = async (req, res, next) => {
