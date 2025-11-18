@@ -67,11 +67,12 @@ app.get('/restaurant-selector.html', (req, res) => {
 // Route de test pour vérifier le déploiement
 app.get('/api/version', (req, res) => {
   res.json({
-    version: '2.2',
-    commit: 'aa3869a',
+    version: '2.3',
+    commit: 'a9674ed',
     database: isPostgreSQL ? 'PostgreSQL' : 'SQLite',
     postgresqlFixDeployed: true,
     sqliteFixDeployed: true,
+    robustSQLiteFix: true,
     timestamp: new Date().toISOString()
   });
 });
@@ -1086,9 +1087,30 @@ app.post('/api/create-restaurant', requireAuth, [
       );
     }
 
-    const restaurantId = isPostgreSQL
-      ? restaurantResult[0].id
-      : (restaurantResult.lastID || restaurantResult.insertId || await get('SELECT last_insert_rowid() as id').then(r => r.id));
+    let restaurantId;
+    if (isPostgreSQL) {
+      restaurantId = restaurantResult[0].id;
+    } else {
+      // SQLite - plusieurs méthodes de fallback
+      restaurantId = restaurantResult.lastID;
+      if (!restaurantId && restaurantResult.insertId) {
+        restaurantId = restaurantResult.insertId;
+      }
+      if (!restaurantId) {
+        // Dernière option : récupérer le dernier ID inséré
+        const lastRow = await get('SELECT last_insert_rowid() as id');
+        restaurantId = lastRow ? lastRow.id : null;
+      }
+    }
+
+    console.log('=== DEBUG RESTAURANT CREATION ===');
+    console.log('isPostgreSQL:', isPostgreSQL);
+    console.log('restaurantResult:', restaurantResult);
+    console.log('restaurantId final:', restaurantId);
+
+    if (!restaurantId) {
+      throw new Error('Impossible de récupérer l\'ID du restaurant créé');
+    }
 
     // Lier l'utilisateur au nouveau restaurant comme propriétaire
     await run(
