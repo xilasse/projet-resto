@@ -723,14 +723,18 @@ class AuthManager {
             console.log('🔓 Verrou displayTeam libéré');
         }, 1000);
 
-        // Vérifier la visibilité du tableau parent
-        const tableContainer = tableBody.closest('.table-container');
-        const table = tableBody.closest('table');
-        console.log('📊 Visibilité tableau:', {
-            tableDisplay: table ? getComputedStyle(table).display : 'non trouvé',
-            tableContainerDisplay: tableContainer ? getComputedStyle(tableContainer).display : 'non trouvé',
-            tableHeight: table ? getComputedStyle(table).height : 'non trouvé'
-        });
+        // Vérifier la visibilité du tableau parent (avec protection)
+        if (tableBody) {
+            const tableContainer = tableBody.closest('.table-container');
+            const table = tableBody.closest('table');
+            console.log('📊 Visibilité tableau:', {
+                tableDisplay: table ? getComputedStyle(table).display : 'non trouvé',
+                tableContainerDisplay: tableContainer ? getComputedStyle(tableContainer).display : 'non trouvé',
+                tableHeight: table ? getComputedStyle(table).height : 'non trouvé'
+            });
+        } else {
+            console.log('⚠️ tableBody non disponible pour vérification visibilité');
+        }
     }
 
     displayTeamError(message) {
