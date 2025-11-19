@@ -506,12 +506,24 @@ app.post('/api/menu', requireAuth, async (req, res) => {
 
     const { name, description, price, category, stockQuantity, imageUrl } = req.body;
 
-    const result = await run(`
-      INSERT INTO menu_items (name, description, price, category, image_url, is_available, restaurant_id, stock_quantity)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `, [name, description, price, category, imageUrl || null, 1, activeRestaurantId, stockQuantity || 0]);
+    const isPostgreSQL = process.env.DATABASE_URL || process.env.PGHOST;
 
-    res.json({ success: true, id: result.lastID });
+    let result;
+    if (isPostgreSQL) {
+      // PostgreSQL avec RETURNING
+      result = await query(`
+        INSERT INTO menu_items (name, description, price, category, image_url, is_available, restaurant_id, stock_quantity)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
+      `, [name, description, price, category, imageUrl || null, 1, activeRestaurantId, stockQuantity || 0]);
+      res.json({ success: true, id: result[0].id });
+    } else {
+      // SQLite
+      result = await run(`
+        INSERT INTO menu_items (name, description, price, category, image_url, is_available, restaurant_id, stock_quantity)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [name, description, price, category, imageUrl || null, 1, activeRestaurantId, stockQuantity || 0]);
+      res.json({ success: true, id: result.lastID });
+    }
   } catch (error) {
     console.error('Erreur création menu item:', error);
     res.status(500).json({ error: 'Erreur lors de la création' });
@@ -524,11 +536,21 @@ app.put('/api/menu/:id', requireAuth, async (req, res) => {
     const { id } = req.params;
     const { name, description, price, category, stockQuantity, imageUrl, isAvailable } = req.body;
 
-    await run(`
-      UPDATE menu_items
-      SET name = ?, description = ?, price = ?, category = ?, image_url = ?, is_available = ?, stock_quantity = ?
-      WHERE id = ?
-    `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, stockQuantity || 0, id]);
+    const isPostgreSQL = process.env.DATABASE_URL || process.env.PGHOST;
+
+    if (isPostgreSQL) {
+      await run(`
+        UPDATE menu_items
+        SET name = $1, description = $2, price = $3, category = $4, image_url = $5, is_available = $6, stock_quantity = $7
+        WHERE id = $8
+      `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, stockQuantity || 0, id]);
+    } else {
+      await run(`
+        UPDATE menu_items
+        SET name = ?, description = ?, price = ?, category = ?, image_url = ?, is_available = ?, stock_quantity = ?
+        WHERE id = ?
+      `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, stockQuantity || 0, id]);
+    }
 
     res.json({ success: true });
   } catch (error) {
@@ -541,7 +563,13 @@ app.put('/api/menu/:id', requireAuth, async (req, res) => {
 app.delete('/api/menu/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    await run('DELETE FROM menu_items WHERE id = ?', [id]);
+    const isPostgreSQL = process.env.DATABASE_URL || process.env.PGHOST;
+
+    if (isPostgreSQL) {
+      await run('DELETE FROM menu_items WHERE id = $1', [id]);
+    } else {
+      await run('DELETE FROM menu_items WHERE id = ?', [id]);
+    }
     res.json({ success: true });
   } catch (error) {
     console.error('Erreur suppression menu item:', error);
@@ -595,13 +623,22 @@ app.post('/api/init-menu', requireAuth, async (req, res) => {
       { name: "Champagne", description: "Brut, coupe 12cl", price: 12.00, category: "boisson_alcoolise" }
     ];
 
+    const isPostgreSQL = process.env.DATABASE_URL || process.env.PGHOST;
     let insertedCount = 0;
+
     for (const item of menuData) {
       try {
-        await run(`
-          INSERT INTO menu_items (name, description, price, category, restaurant_id, is_available, stock_quantity)
-          VALUES (?, ?, ?, ?, ?, 1, 50)
-        `, [item.name, item.description, item.price, item.category, activeRestaurantId]);
+        if (isPostgreSQL) {
+          await run(`
+            INSERT INTO menu_items (name, description, price, category, restaurant_id, is_available, stock_quantity)
+            VALUES ($1, $2, $3, $4, $5, 1, 50)
+          `, [item.name, item.description, item.price, item.category, activeRestaurantId]);
+        } else {
+          await run(`
+            INSERT INTO menu_items (name, description, price, category, restaurant_id, is_available, stock_quantity)
+            VALUES (?, ?, ?, ?, ?, 1, 50)
+          `, [item.name, item.description, item.price, item.category, activeRestaurantId]);
+        }
         insertedCount++;
       } catch (error) {
         console.log(`Item ${item.name} déjà existant ou erreur:`, error.message);
