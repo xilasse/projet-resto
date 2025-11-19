@@ -488,7 +488,20 @@ app.get('/api/me', requireAuth, (req, res) => {
 // Routes API basiques pour éviter les erreurs 404
 app.get('/api/menu', requireAuth, async (req, res) => {
   try {
-    const menu = await query('SELECT * FROM menu_items ORDER BY category, name');
+    const activeRestaurantId = req.session.activeRestaurantId;
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    const isPostgreSQL = process.env.DATABASE_URL || process.env.PGHOST;
+    let menu;
+
+    if (isPostgreSQL) {
+      menu = await query('SELECT * FROM menu_items WHERE restaurant_id = $1 ORDER BY category, name', [activeRestaurantId]);
+    } else {
+      menu = await query('SELECT * FROM menu_items WHERE restaurant_id = ? ORDER BY category, name', [activeRestaurantId]);
+    }
+
     res.json(menu);
   } catch (error) {
     console.error('Erreur menu:', error);
@@ -535,6 +548,11 @@ app.put('/api/menu/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
     const { name, description, price, category, stockQuantity, imageUrl, isAvailable } = req.body;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
 
     const isPostgreSQL = process.env.DATABASE_URL || process.env.PGHOST;
 
@@ -542,14 +560,14 @@ app.put('/api/menu/:id', requireAuth, async (req, res) => {
       await run(`
         UPDATE menu_items
         SET name = $1, description = $2, price = $3, category = $4, image_url = $5, is_available = $6
-        WHERE id = $7
-      `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, id]);
+        WHERE id = $7 AND restaurant_id = $8
+      `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, id, activeRestaurantId]);
     } else {
       await run(`
         UPDATE menu_items
         SET name = ?, description = ?, price = ?, category = ?, image_url = ?, is_available = ?
-        WHERE id = ?
-      `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, id]);
+        WHERE id = ? AND restaurant_id = ?
+      `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, id, activeRestaurantId]);
     }
 
     res.json({ success: true });
@@ -563,12 +581,18 @@ app.put('/api/menu/:id', requireAuth, async (req, res) => {
 app.delete('/api/menu/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
     const isPostgreSQL = process.env.DATABASE_URL || process.env.PGHOST;
 
     if (isPostgreSQL) {
-      await run('DELETE FROM menu_items WHERE id = $1', [id]);
+      await run('DELETE FROM menu_items WHERE id = $1 AND restaurant_id = $2', [id, activeRestaurantId]);
     } else {
-      await run('DELETE FROM menu_items WHERE id = ?', [id]);
+      await run('DELETE FROM menu_items WHERE id = ? AND restaurant_id = ?', [id, activeRestaurantId]);
     }
     res.json({ success: true });
   } catch (error) {
