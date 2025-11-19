@@ -650,6 +650,27 @@ app.post('/api/init-menu', requireAuth, async (req, res) => {
     const isPostgreSQL = process.env.DATABASE_URL || process.env.PGHOST;
     let insertedCount = 0;
 
+    // D'abord, vérifier s'il y a déjà des menus pour ce restaurant
+    let existingMenuCount;
+    if (isPostgreSQL) {
+      const result = await get('SELECT COUNT(*) as count FROM menu_items WHERE restaurant_id = $1', [activeRestaurantId]);
+      existingMenuCount = result.count;
+    } else {
+      const result = await get('SELECT COUNT(*) as count FROM menu_items WHERE restaurant_id = ?', [activeRestaurantId]);
+      existingMenuCount = result.count;
+    }
+
+    if (existingMenuCount > 0) {
+      return res.json({
+        success: true,
+        message: `Ce restaurant a déjà ${existingMenuCount} éléments de menu. Initialisation ignorée.`,
+        total: menuData.length,
+        inserted: 0
+      });
+    }
+
+    console.log(`Initialisation du menu pour le restaurant ${activeRestaurantId} - Aucun élément existant`);
+
     for (const item of menuData) {
       try {
         if (isPostgreSQL) {
@@ -664,8 +685,9 @@ app.post('/api/init-menu', requireAuth, async (req, res) => {
           `, [item.name, item.description, item.price, item.category, activeRestaurantId]);
         }
         insertedCount++;
+        console.log(`✅ Item "${item.name}" ajouté pour le restaurant ${activeRestaurantId}`);
       } catch (error) {
-        console.log(`Item ${item.name} déjà existant ou erreur:`, error.message);
+        console.log(`❌ Erreur lors de la création de "${item.name}":`, error.message);
       }
     }
 
