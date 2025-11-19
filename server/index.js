@@ -496,6 +496,130 @@ app.get('/api/menu', requireAuth, async (req, res) => {
   }
 });
 
+// API POST pour créer un élément de menu
+app.post('/api/menu', requireAuth, async (req, res) => {
+  try {
+    const activeRestaurantId = req.session.activeRestaurantId;
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    const { name, description, price, category, stockQuantity, imageUrl } = req.body;
+
+    const result = await run(`
+      INSERT INTO menu_items (name, description, price, category, image_url, is_available, restaurant_id, stock_quantity)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+    `, [name, description, price, category, imageUrl || null, 1, activeRestaurantId, stockQuantity || 0]);
+
+    res.json({ success: true, id: result.lastID });
+  } catch (error) {
+    console.error('Erreur création menu item:', error);
+    res.status(500).json({ error: 'Erreur lors de la création' });
+  }
+});
+
+// API PUT pour modifier un élément de menu
+app.put('/api/menu/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, description, price, category, stockQuantity, imageUrl, isAvailable } = req.body;
+
+    await run(`
+      UPDATE menu_items
+      SET name = ?, description = ?, price = ?, category = ?, image_url = ?, is_available = ?, stock_quantity = ?
+      WHERE id = ?
+    `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, stockQuantity || 0, id]);
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur modification menu item:', error);
+    res.status(500).json({ error: 'Erreur lors de la modification' });
+  }
+});
+
+// API DELETE pour supprimer un élément de menu
+app.delete('/api/menu/:id', requireAuth, async (req, res) => {
+  try {
+    const { id } = req.params;
+    await run('DELETE FROM menu_items WHERE id = ?', [id]);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Erreur suppression menu item:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression' });
+  }
+});
+
+// API POST pour initialiser le menu avec des données d'exemple
+app.post('/api/init-menu', requireAuth, async (req, res) => {
+  try {
+    const activeRestaurantId = req.session.activeRestaurantId;
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    const menuData = [
+      // Entrées (3)
+      { name: "Salade de chèvre chaud", description: "Salade verte, crottins de chavignol, noix, miel", price: 12.50, category: "entree" },
+      { name: "Carpaccio de saumon", description: "Saumon fumé, câpres, aneth, citron vert", price: 14.00, category: "entree" },
+      { name: "Foie gras poêlé", description: "Foie gras, figues confites, pain d'épices", price: 18.50, category: "entree" },
+
+      // Plats principaux (3)
+      { name: "Magret de canard", description: "Magret grillé, sauce aux cerises, gratin dauphinois", price: 24.00, category: "plat" },
+      { name: "Pavé de saumon", description: "Saumon grillé, légumes de saison, riz basmati", price: 22.50, category: "plat" },
+      { name: "Côte de bœuf", description: "Côte de bœuf 300g, frites maison, salade verte", price: 28.00, category: "plat" },
+
+      // Desserts (3)
+      { name: "Tarte tatin", description: "Tarte aux pommes caramélisées, boule de vanille", price: 8.50, category: "dessert" },
+      { name: "Mousse au chocolat", description: "Mousse maison, copeaux de chocolat, chantilly", price: 7.50, category: "dessert" },
+      { name: "Crème brûlée", description: "Crème brûlée vanille, biscuit sablé", price: 8.00, category: "dessert" },
+
+      // Boissons froides (5)
+      { name: "Coca-Cola", description: "33cl", price: 3.50, category: "boisson_froide" },
+      { name: "Eau minérale", description: "50cl Evian", price: 2.50, category: "boisson_froide" },
+      { name: "Jus d'orange", description: "Pressé frais 25cl", price: 4.00, category: "boisson_froide" },
+      { name: "Limonade artisanale", description: "Citron frais, menthe, 33cl", price: 4.50, category: "boisson_froide" },
+      { name: "Thé glacé", description: "Thé noir pêche, 33cl", price: 3.80, category: "boisson_froide" },
+
+      // Boissons chaudes (5)
+      { name: "Café expresso", description: "Arabica pur origine", price: 2.50, category: "boisson_chaude" },
+      { name: "Thé Earl Grey", description: "Thé noir bergamote", price: 3.00, category: "boisson_chaude" },
+      { name: "Chocolat chaud", description: "Chocolat noir 70%, chantilly", price: 4.50, category: "boisson_chaude" },
+      { name: "Cappuccino", description: "Expresso, lait moussé, cannelle", price: 3.80, category: "boisson_chaude" },
+      { name: "Infusion verveine", description: "Verveine citronnée bio", price: 2.80, category: "boisson_chaude" },
+
+      // Boissons alcoolisées (5)
+      { name: "Vin rouge AOC", description: "Côtes du Rhône, verre 12cl", price: 5.50, category: "boisson_alcoolise" },
+      { name: "Vin blanc sec", description: "Sauvignon blanc, verre 12cl", price: 5.00, category: "boisson_alcoolise" },
+      { name: "Bière pression", description: "Blonde 25cl", price: 4.50, category: "boisson_alcoolise" },
+      { name: "Cognac", description: "VS, 4cl", price: 8.00, category: "boisson_alcoolise" },
+      { name: "Champagne", description: "Brut, coupe 12cl", price: 12.00, category: "boisson_alcoolise" }
+    ];
+
+    let insertedCount = 0;
+    for (const item of menuData) {
+      try {
+        await run(`
+          INSERT INTO menu_items (name, description, price, category, restaurant_id, is_available, stock_quantity)
+          VALUES (?, ?, ?, ?, ?, 1, 50)
+        `, [item.name, item.description, item.price, item.category, activeRestaurantId]);
+        insertedCount++;
+      } catch (error) {
+        console.log(`Item ${item.name} déjà existant ou erreur:`, error.message);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `${insertedCount} éléments ajoutés au menu`,
+      total: menuData.length
+    });
+
+  } catch (error) {
+    console.error('Erreur initialisation menu:', error);
+    res.status(500).json({ error: 'Erreur lors de l\'initialisation' });
+  }
+});
+
 app.get('/api/tables', requireAuth, async (req, res) => {
   try {
     const activeRestaurantId = req.session.activeRestaurantId;
