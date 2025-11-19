@@ -41,7 +41,7 @@ class RestaurantApp {
 
         // Bouton d'initialisation du menu
         document.getElementById('initMenuBtn').addEventListener('click', async () => {
-            if (confirm('Voulez-vous initialiser le menu avec des plats d\'exemple ? Cela ajoutera 20 plats dans toutes les catégories.')) {
+            if (confirm('Voulez-vous créer un menu d\'exemple pour ce restaurant ? Cela ajoutera 24 plats dans toutes les catégories.')) {
                 try {
                     const response = await fetch('/api/init-menu', { method: 'POST' });
                     const result = await response.json();
@@ -196,7 +196,7 @@ class RestaurantApp {
                     <div style="text-align: center; padding: 40px; color: #666;">
                         <h3>🍽️ Aucun menu trouvé</h3>
                         <p>La base de données semble vide.</p>
-                        <p><strong>Pour initialiser le menu d'exemple :</strong></p>
+                        <p><strong>Pour créer un menu d'exemple :</strong></p>
                         <p>Visitez : <a href="/api/init-menu" target="_blank">/api/init-menu</a></p>
                         <p>Puis rechargez cette page.</p>
                         <button onclick="window.location.reload()" style="padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; margin-top: 10px;">
