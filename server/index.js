@@ -512,16 +512,16 @@ app.post('/api/menu', requireAuth, async (req, res) => {
     if (isPostgreSQL) {
       // PostgreSQL avec RETURNING
       result = await query(`
-        INSERT INTO menu_items (name, description, price, category, image_url, is_available, restaurant_id, stock_quantity)
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id
-      `, [name, description, price, category, imageUrl || null, 1, activeRestaurantId, stockQuantity || 0]);
+        INSERT INTO menu_items (name, description, price, category, image_url, is_available, restaurant_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
+      `, [name, description, price, category, imageUrl || null, 1, activeRestaurantId]);
       res.json({ success: true, id: result[0].id });
     } else {
       // SQLite
       result = await run(`
-        INSERT INTO menu_items (name, description, price, category, image_url, is_available, restaurant_id, stock_quantity)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [name, description, price, category, imageUrl || null, 1, activeRestaurantId, stockQuantity || 0]);
+        INSERT INTO menu_items (name, description, price, category, image_url, is_available, restaurant_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `, [name, description, price, category, imageUrl || null, 1, activeRestaurantId]);
       res.json({ success: true, id: result.lastID });
     }
   } catch (error) {
@@ -541,15 +541,15 @@ app.put('/api/menu/:id', requireAuth, async (req, res) => {
     if (isPostgreSQL) {
       await run(`
         UPDATE menu_items
-        SET name = $1, description = $2, price = $3, category = $4, image_url = $5, is_available = $6, stock_quantity = $7
-        WHERE id = $8
-      `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, stockQuantity || 0, id]);
+        SET name = $1, description = $2, price = $3, category = $4, image_url = $5, is_available = $6
+        WHERE id = $7
+      `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, id]);
     } else {
       await run(`
         UPDATE menu_items
-        SET name = ?, description = ?, price = ?, category = ?, image_url = ?, is_available = ?, stock_quantity = ?
+        SET name = ?, description = ?, price = ?, category = ?, image_url = ?, is_available = ?
         WHERE id = ?
-      `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, stockQuantity || 0, id]);
+      `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, id]);
     }
 
     res.json({ success: true });
@@ -630,13 +630,13 @@ app.post('/api/init-menu', requireAuth, async (req, res) => {
       try {
         if (isPostgreSQL) {
           await run(`
-            INSERT INTO menu_items (name, description, price, category, restaurant_id, is_available, stock_quantity)
-            VALUES ($1, $2, $3, $4, $5, 1, 50)
+            INSERT INTO menu_items (name, description, price, category, restaurant_id, is_available)
+            VALUES ($1, $2, $3, $4, $5, 1)
           `, [item.name, item.description, item.price, item.category, activeRestaurantId]);
         } else {
           await run(`
-            INSERT INTO menu_items (name, description, price, category, restaurant_id, is_available, stock_quantity)
-            VALUES (?, ?, ?, ?, ?, 1, 50)
+            INSERT INTO menu_items (name, description, price, category, restaurant_id, is_available)
+            VALUES (?, ?, ?, ?, ?, 1)
           `, [item.name, item.description, item.price, item.category, activeRestaurantId]);
         }
         insertedCount++;
