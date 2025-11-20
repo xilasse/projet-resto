@@ -1318,14 +1318,19 @@ class AuthManager {
                                         <div class="employee-role">${user.role === 'MANAGER' ? 'Manager' : 'Employé'}</div>
                                     </div>
                                 </td>
-                                ${currentWeek.map((day, dayIndex) => `
-                                    <td class="schedule-day" data-day="${dayIndex}">
-                                        <div class="schedule-slot" onclick="authManager.editScheduleSlot(${user.id}, ${dayIndex})">
+                                ${currentWeek.map((day, dayIndex) => {
+                                    const isWeekend = dayIndex === 5 || dayIndex === 6; // Samedi/Dimanche
+                                    const isToday = new Date().toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit' }) === day.date;
+
+                                    return `
+                                    <td class="schedule-day ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}" data-day="${dayIndex}">
+                                        <div class="schedule-slot" onclick="authManager.editScheduleSlot(${user.id}, ${dayIndex})" title="Cliquer pour modifier le planning de ${day.name} ${day.date}">
                                             <div class="time-slot">--:-- / --:--</div>
                                             <div class="slot-status">Repos</div>
                                         </div>
                                     </td>
-                                `).join('')}
+                                `;
+                                }).join('')}
                                 <td class="total-hours">0h</td>
                             </tr>
                         `;
@@ -1389,43 +1394,69 @@ class AuthManager {
 
         if (!user || !currentWeek[dayIndex]) return;
 
+        // Récupérer les données actuelles du créneau
+        const row = document.querySelector(`tr[data-user-id="${userId}"]`);
+        const dayCell = row?.querySelector(`td[data-day="${dayIndex}"]`);
+        const slot = dayCell?.querySelector('.schedule-slot');
+
+        let currentType = 'rest';
+        let currentStartTime = '09:00';
+        let currentEndTime = '17:00';
+
+        if (slot) {
+            if (slot.classList.contains('working')) {
+                currentType = 'work';
+                const timeSlot = slot.querySelector('.time-slot');
+                if (timeSlot && timeSlot.textContent !== '--:-- / --:--') {
+                    const times = timeSlot.textContent.split(' / ');
+                    currentStartTime = times[0] || '09:00';
+                    currentEndTime = times[1] || '17:00';
+                }
+            } else if (slot.classList.contains('vacation')) {
+                currentType = 'vacation';
+            }
+        }
+
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.innerHTML = `
             <div class="modal">
                 <div class="modal-header">
-                    <h3>Modifier le planning</h3>
+                    <h3>📅 Modifier le planning</h3>
                     <button class="close-btn" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</button>
                 </div>
                 <form class="modal-content" onsubmit="authManager.saveScheduleSlot(event, ${userId}, ${dayIndex})">
                     <div class="schedule-info">
-                        <strong>${user.first_name} ${user.last_name}</strong><br>
-                        ${currentWeek[dayIndex].name} ${currentWeek[dayIndex].date}
+                        <strong>👤 ${user.first_name} ${user.last_name}</strong> (${user.role === 'MANAGER' ? 'Manager' : 'Employé'})<br>
+                        <strong>📅 ${currentWeek[dayIndex].name} ${currentWeek[dayIndex].date}</strong>
                     </div>
 
                     <div class="form-group">
-                        <label for="schedule-type">Type de service</label>
+                        <label for="schedule-type">🏷️ Type de service</label>
                         <select id="schedule-type" name="type" onchange="authManager.toggleScheduleFields(this.value)">
-                            <option value="rest">Repos</option>
-                            <option value="work">Travail</option>
-                            <option value="vacation">Congé</option>
+                            <option value="rest" ${currentType === 'rest' ? 'selected' : ''}>🛌 Repos</option>
+                            <option value="work" ${currentType === 'work' ? 'selected' : ''}>💼 Travail</option>
+                            <option value="vacation" ${currentType === 'vacation' ? 'selected' : ''}>🏖️ Congé</option>
                         </select>
                     </div>
 
-                    <div id="work-fields" style="display: none;">
+                    <div id="work-fields" style="display: ${currentType === 'work' ? 'block' : 'none'};">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="start-time">Heure de début</label>
-                                <input type="time" id="start-time" name="startTime" value="09:00">
+                                <label for="start-time">⏰ Heure de début</label>
+                                <input type="time" id="start-time" name="startTime" value="${currentStartTime}">
                             </div>
                             <div class="form-group">
-                                <label for="end-time">Heure de fin</label>
-                                <input type="time" id="end-time" name="endTime" value="17:00">
+                                <label for="end-time">🕐 Heure de fin</label>
+                                <input type="time" id="end-time" name="endTime" value="${currentEndTime}">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="break-duration">Pause (minutes)</label>
+                            <label for="break-duration">☕ Pause (minutes)</label>
                             <input type="number" id="break-duration" name="breakDuration" value="60" min="0" max="300">
+                        </div>
+                        <div class="schedule-tips">
+                            <small>💡 <strong>Astuce :</strong> Les horaires standards sont 9h-17h pour employés, 8h-16h pour managers</small>
                         </div>
                     </div>
 

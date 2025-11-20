@@ -640,6 +640,29 @@ body {
 .schedule-day {
     text-align: center;
     padding: 8px;
+    position: relative;
+}
+
+.schedule-day.weekend {
+    background: #fff8e1;
+}
+
+.schedule-day.today {
+    background: #e3f2fd;
+    position: relative;
+}
+
+.schedule-day.today::before {
+    content: "Aujourd'hui";
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    background: #2196f3;
+    color: white;
+    font-size: 0.6rem;
+    padding: 1px 4px;
+    border-radius: 3px;
+    font-weight: 600;
 }
 
 .schedule-slot {
@@ -652,21 +675,76 @@ body {
     display: flex;
     flex-direction: column;
     justify-content: center;
+    position: relative;
+    background: #f8f9fa;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.schedule-slot::before {
+    content: "✏️ Cliquer pour modifier";
+    position: absolute;
+    top: -30px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2c3e50;
+    color: white;
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.7rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.3s ease;
+    z-index: 10;
+}
+
+.schedule-slot::after {
+    content: "📝";
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    font-size: 0.8rem;
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .schedule-slot:hover {
     border-color: #3498db;
-    background: #f8f9fa;
+    background: #e8f4f8;
+    transform: scale(1.02);
+    box-shadow: 0 3px 8px rgba(52, 152, 219, 0.3);
+}
+
+.schedule-slot:hover::before {
+    opacity: 1;
+}
+
+.schedule-slot:hover::after {
+    opacity: 1;
 }
 
 .schedule-slot.working {
     background: #d5f4e6;
     border-color: #27ae60;
+    box-shadow: 0 2px 6px rgba(39, 174, 96, 0.2);
+}
+
+.schedule-slot.working:hover {
+    background: #c8e6c9;
+    transform: scale(1.02);
+    box-shadow: 0 3px 8px rgba(39, 174, 96, 0.4);
 }
 
 .schedule-slot.vacation {
     background: #ffeaa7;
     border-color: #fdcb6e;
+    box-shadow: 0 2px 6px rgba(253, 203, 110, 0.3);
+}
+
+.schedule-slot.vacation:hover {
+    background: #fdd835;
+    transform: scale(1.02);
+    box-shadow: 0 3px 8px rgba(253, 203, 110, 0.5);
 }
 
 .time-slot {
@@ -750,6 +828,15 @@ body {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 15px;
+}
+
+.schedule-tips {
+    background: #e8f5e8;
+    border: 1px solid #c3e6c3;
+    border-radius: 6px;
+    padding: 10px;
+    margin-top: 10px;
+    color: #2d5a2d;
 }
 
 /* Responsive pour les nouvelles vues */
