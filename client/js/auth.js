@@ -1402,6 +1402,11 @@ class AuthManager {
         console.log('🔄 editScheduleSlot appelé:', { userId, dayIndex });
         console.log('📋 currentTeamData:', this.currentTeamData);
 
+        // DEBUG COMPLET
+        console.log('🌍 DOM ready state:', document.readyState);
+        console.log('📱 Body présent:', !!document.body);
+        console.log('🔍 Modals existants avant:', document.querySelectorAll('.modal-overlay').length);
+
         const user = this.currentTeamData?.find(u => u.id === userId);
         const currentWeek = this.getCurrentWeek();
 
@@ -1504,20 +1509,52 @@ class AuthManager {
         document.body.appendChild(modal);
         console.log('✅ Modal planning ajouté au DOM');
         console.log('📱 Modal HTML créé:', modal.innerHTML.substring(0, 200) + '...');
+        console.log('🔍 Modals existants après:', document.querySelectorAll('.modal-overlay').length);
 
-        // S'assurer que le modal est visible
-        modal.style.display = 'flex';
-        modal.style.position = 'fixed';
-        modal.style.top = '0';
-        modal.style.left = '0';
-        modal.style.width = '100%';
-        modal.style.height = '100%';
-        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
-        modal.style.zIndex = '9999';
-        modal.style.justifyContent = 'center';
-        modal.style.alignItems = 'center';
+        // S'assurer que le modal est visible - STYLES ULTRA FORCÉS
+        modal.style.cssText = `
+            display: flex !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: rgba(0, 0, 0, 0.8) !important;
+            z-index: 99999 !important;
+            justify-content: center !important;
+            align-items: center !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        `;
 
-        console.log('🎯 Modal planning affiché avec styles forcés');
+        // Styles pour le modal interne
+        const modalInner = modal.querySelector('.modal');
+        if (modalInner) {
+            modalInner.style.cssText = `
+                background: white !important;
+                border-radius: 8px !important;
+                padding: 20px !important;
+                max-width: 500px !important;
+                width: 90% !important;
+                max-height: 90vh !important;
+                overflow-y: auto !important;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+                position: relative !important;
+                z-index: 100000 !important;
+            `;
+        }
+
+        console.log('🎯 Modal planning affiché avec styles ULTRA FORCÉS');
+        console.log('📏 Modal dimensions:', modal.getBoundingClientRect());
+
+        // Alert de debug pour être sûr
+        setTimeout(() => {
+            if (document.querySelectorAll('.modal-overlay').length > 0) {
+                console.log('✅ Modal bien présent dans le DOM après 1sec');
+            } else {
+                console.error('❌ Modal disparu du DOM !');
+            }
+        }, 1000);
     }
 
     toggleScheduleFields(type, modalId = '') {
