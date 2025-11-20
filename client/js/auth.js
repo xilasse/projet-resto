@@ -1443,6 +1443,13 @@ class AuthManager {
             }
         }
 
+        // Supprimer le modal existant s'il y en a un
+        const existingModal = document.querySelector('.modal-overlay');
+        if (existingModal) {
+            existingModal.remove();
+        }
+
+        const modalId = `schedule-modal-${userId}-${dayIndex}-${Date.now()}`;
         const modal = document.createElement('div');
         modal.className = 'modal-overlay';
         modal.innerHTML = `
@@ -1458,28 +1465,28 @@ class AuthManager {
                     </div>
 
                     <div class="form-group">
-                        <label for="schedule-type">🏷️ Type de service</label>
-                        <select id="schedule-type" name="type" onchange="authManager.toggleScheduleFields(this.value)">
+                        <label for="schedule-type-${modalId}">🏷️ Type de service</label>
+                        <select id="schedule-type-${modalId}" name="type" onchange="authManager.toggleScheduleFields(this.value, '${modalId}')">
                             <option value="rest" ${currentType === 'rest' ? 'selected' : ''}>🛌 Repos</option>
                             <option value="work" ${currentType === 'work' ? 'selected' : ''}>💼 Travail</option>
                             <option value="vacation" ${currentType === 'vacation' ? 'selected' : ''}>🏖️ Congé</option>
                         </select>
                     </div>
 
-                    <div id="work-fields" style="display: ${currentType === 'work' ? 'block' : 'none'};">
+                    <div id="work-fields-${modalId}" style="display: ${currentType === 'work' ? 'block' : 'none'};">
                         <div class="form-row">
                             <div class="form-group">
-                                <label for="start-time">⏰ Heure de début</label>
-                                <input type="time" id="start-time" name="startTime" value="${currentStartTime}">
+                                <label for="start-time-${modalId}">⏰ Heure de début</label>
+                                <input type="time" id="start-time-${modalId}" name="startTime" value="${currentStartTime}">
                             </div>
                             <div class="form-group">
-                                <label for="end-time">🕐 Heure de fin</label>
-                                <input type="time" id="end-time" name="endTime" value="${currentEndTime}">
+                                <label for="end-time-${modalId}">🕐 Heure de fin</label>
+                                <input type="time" id="end-time-${modalId}" name="endTime" value="${currentEndTime}">
                             </div>
                         </div>
                         <div class="form-group">
-                            <label for="break-duration">☕ Pause (minutes)</label>
-                            <input type="number" id="break-duration" name="breakDuration" value="60" min="0" max="300">
+                            <label for="break-duration-${modalId}">☕ Pause (minutes)</label>
+                            <input type="number" id="break-duration-${modalId}" name="breakDuration" value="60" min="0" max="300">
                         </div>
                         <div class="schedule-tips">
                             <small>💡 <strong>Astuce :</strong> Les horaires standards sont 9h-17h pour employés, 8h-16h pour managers</small>
@@ -1497,8 +1504,9 @@ class AuthManager {
         document.body.appendChild(modal);
     }
 
-    toggleScheduleFields(type) {
-        const workFields = document.getElementById('work-fields');
+    toggleScheduleFields(type, modalId = '') {
+        const workFieldsId = modalId ? `work-fields-${modalId}` : 'work-fields';
+        const workFields = document.getElementById(workFieldsId);
         if (workFields) {
             workFields.style.display = type === 'work' ? 'block' : 'none';
         }

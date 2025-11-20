@@ -20,9 +20,13 @@ const isRailway = process.env.RAILWAY_ENVIRONMENT ||
                   process.env.RAILWAY_PROJECT_NAME ||
                   process.env.RAILWAY_SERVICE_NAME ||
                   process.env.RAILWAY_ENVIRONMENT_NAME ||
-                  (process.env.PORT && process.env.NODE_ENV === 'production');
+                  (process.env.PORT && process.env.NODE_ENV === 'production') ||
+                  process.env.PORT === '8080'; // Railway utilise souvent le port 8080
 
 const hasPostgresConfig = process.env.DATABASE_URL || process.env.PGHOST || process.env.PGUSER;
+
+// FORCER PostgreSQL en production même sans config parfaite
+const forcePostgreSQL = process.env.NODE_ENV === 'production' || isRailway;
 
 // Diagnostic détaillé
 console.log('🔍 DIAGNOSTIC COMPLET ENVIRONNEMENT:');
@@ -30,13 +34,22 @@ console.log('- Railway détecté:', !!isRailway);
 console.log('- NODE_ENV:', process.env.NODE_ENV || '[NON DÉFINIE]');
 console.log('- RAILWAY_ENVIRONMENT:', process.env.RAILWAY_ENVIRONMENT || '[NON DÉFINIE]');
 console.log('- PostgreSQL configuré:', !!hasPostgresConfig);
+console.log('- Force PostgreSQL:', !!forcePostgreSQL);
 
 // Vérification critique pour la production
 if ((process.env.NODE_ENV === 'production' || isRailway) && !hasPostgresConfig) {
   console.error('❌ ERREUR CRITIQUE: Environnement de production/Railway détecté mais aucune base PostgreSQL configurée !');
-  console.error('💡 SOLUTION: Ajoutez un service PostgreSQL sur Railway et configurez DATABASE_URL');
+  console.error('');
+  console.error('🔧 SOLUTION POUR RAILWAY:');
+  console.error('   1. Allez dans Railway Dashboard');
+  console.error('   2. SUPPRIMEZ le service PostgreSQL actuel (problème de volume mount)');
+  console.error('   3. Ajoutez un NOUVEAU service PostgreSQL:');
+  console.error('      - Cliquez "Add Service" → "Database" → "PostgreSQL"');
+  console.error('   4. Railway créera automatiquement DATABASE_URL');
+  console.error('   5. Redéployez l\'application');
+  console.error('');
+  console.error('⚠️ PROBLÈME DÉTECTÉ: Volume mount PostgreSQL en double');
   console.error('🚨 LES DONNÉES SERONT PERDUES À CHAQUE REDÉPLOIEMENT !');
-  console.error('📋 Pour Railway: Ajoutez le service PostgreSQL et la variable DATABASE_URL sera auto-configurée');
 }
 
 // Forcer PostgreSQL sur Railway même si DATABASE_URL n'est pas définie
@@ -45,8 +58,8 @@ if (isRailway && !hasPostgresConfig) {
   // Railway devrait automatiquement fournir DATABASE_URL quand PostgreSQL est ajouté
 }
 
-// Utiliser PostgreSQL SI on a la configuration OU si Railway avec DATABASE_URL
-if (hasPostgresConfig) {
+// FORCER PostgreSQL en production ou si on a la configuration
+if (hasPostgresConfig || forcePostgreSQL) {
   // Production - PostgreSQL sur Railway
   console.log('🔄 Connexion à PostgreSQL sur Railway...');
   console.log('📊 Configuration PostgreSQL détectée');
@@ -62,6 +75,18 @@ if (hasPostgresConfig) {
       ssl: isRailway ? { rejectUnauthorized: false } : false
     };
     console.log('📡 Utilisation DATABASE_URL pour PostgreSQL');
+  } else if (forcePostgreSQL && isRailway) {
+    // Configuration par défaut Railway PostgreSQL
+    console.warn('⚠️ FORCE PostgreSQL sur Railway sans DATABASE_URL');
+    connectionConfig = {
+      host: process.env.PGHOST || 'postgres.railway.internal',
+      port: process.env.PGPORT || 5432,
+      database: process.env.PGDATABASE || 'railway',
+      user: process.env.PGUSER || 'postgres',
+      password: process.env.PGPASSWORD || '',
+      ssl: { rejectUnauthorized: false }
+    };
+    console.log('🔧 Configuration PostgreSQL Railway par défaut');
   } else {
     // Configuration par variables individuelles (fallback)
     connectionConfig = {
