@@ -8,7 +8,7 @@ const session = require('express-session');
 const { body, validationResult } = require('express-validator');
 
 // Gestionnaire de base de données adaptatif
-const { db, query, run, get, isPostgreSQL } = require('./db-manager');
+const { db, query, run, get } = require('./db-manager');
 
 // Fonction pour générer un QR code pour une table
 async function generateQRCodeForTable(tableId, tableNumber, restaurantId) {
@@ -93,10 +93,8 @@ app.get('/api/version', (req, res) => {
   res.json({
     version: '2.3',
     commit: 'a9674ed',
-    database: isPostgreSQL ? 'PostgreSQL' : 'SQLite',
+    database: 'PostgreSQL',
     postgresqlFixDeployed: true,
-    sqliteFixDeployed: true,
-    robustSQLiteFix: true,
     timestamp: new Date().toISOString()
   });
 });
@@ -106,7 +104,7 @@ app.get('/api/debug/environment', (req, res) => {
   const isRailway = process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID || process.env.PORT;
 
   const envInfo = {
-    database_type: isPostgreSQL ? 'PostgreSQL' : 'SQLite',
+    database_type: 'PostgreSQL',
     deployment_platform: isRailway ? 'Railway' : 'Local',
     environment: {
       NODE_ENV: process.env.NODE_ENV || 'undefined',
@@ -123,8 +121,8 @@ app.get('/api/debug/environment', (req, res) => {
     platform: process.platform,
     node_version: process.version,
     timestamp: new Date().toISOString(),
-    critical_warning: isPostgreSQL ? null : '🚨 UTILISE SQLITE - DONNÉES PERDUES AU REDÉPLOIEMENT!',
-    solution: !isPostgreSQL && isRailway ? 'Ajoutez le service PostgreSQL dans Railway Dashboard' : null
+    critical_warning: null,
+    solution: null
   };
 
   console.log('🔍 Diagnostic environnement demandé:', envInfo);
@@ -231,7 +229,7 @@ const requireAuth = (req, res, next) => {
 app.get('/api/debug/database-status', requireAuth, async (req, res) => {
   try {
     const status = {
-      database_type: isPostgreSQL ? 'PostgreSQL' : 'SQLite',
+      database_type: 'PostgreSQL',
       timestamp: new Date().toISOString(),
       tables: {},
       statistics: {}
@@ -242,9 +240,7 @@ app.get('/api/debug/database-status', requireAuth, async (req, res) => {
 
     for (const tableName of tablesToCheck) {
       try {
-        const countQuery = isPostgreSQL ?
-          `SELECT COUNT(*) as count FROM ${tableName}` :
-          `SELECT COUNT(*) as count FROM ${tableName}`;
+        const countQuery = `SELECT COUNT(*) as count FROM ${tableName}`;
 
         const result = await get(countQuery);
         status.tables[tableName] = {
@@ -273,12 +269,12 @@ app.get('/api/debug/database-status', requireAuth, async (req, res) => {
         };
 
         try {
-          const menuCount = await get('SELECT COUNT(*) as count FROM menu_items WHERE restaurant_id = ?', [restaurant.id]);
+          const menuCount = await get('SELECT COUNT(*) as count FROM menu_items WHERE restaurant_id = $1', [restaurant.id]);
           stats.menu_items = menuCount.count;
         } catch (e) { stats.menu_items = 'N/A'; }
 
         try {
-          const roomsCount = await get('SELECT COUNT(*) as count FROM rooms WHERE restaurant_id = ?', [restaurant.id]);
+          const roomsCount = await get('SELECT COUNT(*) as count FROM rooms WHERE restaurant_id = $1', [restaurant.id]);
           stats.rooms = roomsCount.count;
         } catch (e) { stats.rooms = 'N/A'; }
 
@@ -286,13 +282,13 @@ app.get('/api/debug/database-status', requireAuth, async (req, res) => {
           const tablesCount = await get(`
             SELECT COUNT(*) as count FROM tables t
             JOIN rooms r ON t.room_id = r.id
-            WHERE r.restaurant_id = ?
+            WHERE r.restaurant_id = $1
           `, [restaurant.id]);
           stats.tables = tablesCount.count;
         } catch (e) { stats.tables = 'N/A'; }
 
         try {
-          const ordersCount = await get('SELECT COUNT(*) as count FROM orders WHERE restaurant_id = ?', [restaurant.id]);
+          const ordersCount = await get('SELECT COUNT(*) as count FROM orders WHERE restaurant_id = $1', [restaurant.id]);
           stats.orders = ordersCount.count;
         } catch (e) { stats.orders = 'N/A'; }
 
@@ -312,7 +308,7 @@ app.get('/api/debug/database-status', requireAuth, async (req, res) => {
     res.status(500).json({
       error: 'Erreur diagnostic',
       details: error.message,
-      database_type: isPostgreSQL ? 'PostgreSQL' : 'SQLite'
+      database_type: 'PostgreSQL'
     });
   }
 });
@@ -324,7 +320,7 @@ app.post('/api/debug-restaurant', requireAuth, async (req, res) => {
     console.log('Session userId:', req.session.userId);
     console.log('Session userRole:', req.session.userRole);
     console.log('Body:', req.body);
-    console.log('IsPostgreSQL:', isPostgreSQL);
+    // PostgreSQL forcé dans db-manager.js
 
     const { name } = req.body;
     if (!name) {
@@ -332,7 +328,7 @@ app.post('/api/debug-restaurant', requireAuth, async (req, res) => {
     }
 
     // Test de récupération utilisateur
-    const user = await get('SELECT first_name, last_name, email FROM users WHERE id = ?', [req.session.userId]);
+    const user = await get('SELECT first_name, last_name, email FROM users WHERE id = $1', [req.session.userId]);
     console.log('User found:', user);
 
     if (!user) {
@@ -344,7 +340,7 @@ app.post('/api/debug-restaurant', requireAuth, async (req, res) => {
     console.log('Attempting insert with email:', testEmail);
 
     const result = await run(
-      'INSERT INTO restaurants (name, owner_name, email, password_hash) VALUES (?, ?, ?, ?)',
+      'INSERT INTO restaurants (name, owner_name, email, password_hash) VALUES ($1, $2, $3, $4)',
       [name, `${user.first_name} ${user.last_name}`, testEmail, 'DEBUG_TEST']
     );
 
@@ -357,7 +353,7 @@ app.post('/api/debug-restaurant', requireAuth, async (req, res) => {
         lastID: result.lastID,
         insertId: result.insertId,
         user: user,
-        isPostgreSQL: isPostgreSQL
+        database_forced: 'PostgreSQL'
       }
     });
 
@@ -386,7 +382,7 @@ const checkRestaurantAccess = async (req, res, next) => {
     }
 
     const access = await get(
-      'SELECT id FROM user_restaurants WHERE user_id = ? AND restaurant_id = ?',
+      'SELECT id FROM user_restaurants WHERE user_id = $1 AND restaurant_id = $2',
       [userId, restaurantId]
     );
 
@@ -430,7 +426,7 @@ app.post('/api/register', [
 
   try {
     // Vérifier si l'email existe déjà
-    const existingUser = await get('SELECT id FROM users WHERE email = ?', [email]);
+    const existingUser = await get('SELECT id FROM users WHERE email = $1', [email]);
 
     if (existingUser) {
       return res.status(400).json({ error: 'Cet email est déjà utilisé' });
@@ -441,24 +437,24 @@ app.post('/api/register', [
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Créer le restaurant
-    const restaurantResult = await run(
-      'INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES (?, ?, ?, ?, ?, ?)',
+    const restaurantResult = await query(
+      'INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
       [restaurantName, `${firstName} ${lastName}`, email, hashedPassword, phone, address]
     );
 
-    const restaurantId = restaurantResult.lastID;
+    const restaurantId = restaurantResult[0].id;
 
     // Créer l'utilisateur restaurateur
-    const userResult = await run(
-      'INSERT INTO users (email, password_hash, first_name, last_name, phone, role) VALUES (?, ?, ?, ?, ?, ?)',
+    const userResult = await query(
+      'INSERT INTO users (email, password_hash, first_name, last_name, phone, role) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
       [email, hashedPassword, firstName, lastName, phone, 'RESTAURATEUR']
     );
 
-    const userId = userResult.lastID;
+    const userId = userResult[0].id;
 
     // Lier l'utilisateur au restaurant
     await run(
-      'INSERT INTO user_restaurants (user_id, restaurant_id, role) VALUES (?, ?, ?)',
+      'INSERT INTO user_restaurants (user_id, restaurant_id, role) VALUES ($1, $2, $3)',
       [userId, restaurantId, 'RESTAURATEUR']
     );
 
@@ -507,7 +503,7 @@ app.post('/api/login', [
   console.log('Tentative de login pour:', email);
 
   try {
-    const user = await get('SELECT * FROM users WHERE email = ? AND is_active = 1', [email]);
+    const user = await get('SELECT * FROM users WHERE email = $1 AND is_active = 1', [email]);
 
     if (!user) {
       console.log('Aucun utilisateur trouvé pour:', email);
@@ -528,7 +524,7 @@ app.post('/api/login', [
       const restaurants = await query(`SELECT r.id, r.name, ur.role as user_role
               FROM restaurants r
               JOIN user_restaurants ur ON r.id = ur.restaurant_id
-              WHERE ur.user_id = ?`, [user.id]);
+              WHERE ur.user_id = $1`, [user.id]);
 
       // Créer la session
       req.session.userId = user.id;
@@ -637,14 +633,7 @@ app.get('/api/menu', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
     }
 
-    const isPostgreSQL = process.env.DATABASE_URL || process.env.PGHOST;
-    let menu;
-
-    if (isPostgreSQL) {
-      menu = await query('SELECT * FROM menu_items WHERE restaurant_id = $1 ORDER BY category, name', [activeRestaurantId]);
-    } else {
-      menu = await query('SELECT * FROM menu_items WHERE restaurant_id = ? ORDER BY category, name', [activeRestaurantId]);
-    }
+    const menu = await query('SELECT * FROM menu_items WHERE restaurant_id = $1 ORDER BY category, name', [activeRestaurantId]);
 
     res.json(menu);
   } catch (error) {
@@ -663,24 +652,12 @@ app.post('/api/menu', requireAuth, async (req, res) => {
 
     const { name, description, price, category, stockQuantity, imageUrl } = req.body;
 
-    const isPostgreSQL = process.env.DATABASE_URL || process.env.PGHOST;
 
-    let result;
-    if (isPostgreSQL) {
-      // PostgreSQL avec RETURNING
-      result = await query(`
-        INSERT INTO menu_items (name, description, price, category, image_url, is_available, restaurant_id)
-        VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
-      `, [name, description, price, category, imageUrl || null, 1, activeRestaurantId]);
-      res.json({ success: true, id: result[0].id });
-    } else {
-      // SQLite
-      result = await run(`
-        INSERT INTO menu_items (name, description, price, category, image_url, is_available, restaurant_id)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
-      `, [name, description, price, category, imageUrl || null, 1, activeRestaurantId]);
-      res.json({ success: true, id: result.lastID });
-    }
+    const result = await query(`
+      INSERT INTO menu_items (name, description, price, category, image_url, is_available, restaurant_id)
+      VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id
+    `, [name, description, price, category, imageUrl || null, 1, activeRestaurantId]);
+    res.json({ success: true, id: result[0].id });
   } catch (error) {
     console.error('Erreur création menu item:', error);
     res.status(500).json({ error: 'Erreur lors de la création' });
@@ -698,21 +675,12 @@ app.put('/api/menu/:id', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
     }
 
-    const isPostgreSQL = process.env.DATABASE_URL || process.env.PGHOST;
 
-    if (isPostgreSQL) {
-      await run(`
-        UPDATE menu_items
-        SET name = $1, description = $2, price = $3, category = $4, image_url = $5, is_available = $6
-        WHERE id = $7 AND restaurant_id = $8
-      `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, id, activeRestaurantId]);
-    } else {
-      await run(`
-        UPDATE menu_items
-        SET name = ?, description = ?, price = ?, category = ?, image_url = ?, is_available = ?
-        WHERE id = ? AND restaurant_id = ?
-      `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, id, activeRestaurantId]);
-    }
+    await run(`
+      UPDATE menu_items
+      SET name = $1, description = $2, price = $3, category = $4, image_url = $5, is_available = $6
+      WHERE id = $7 AND restaurant_id = $8
+    `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, id, activeRestaurantId]);
 
     res.json({ success: true });
   } catch (error) {
@@ -731,13 +699,8 @@ app.delete('/api/menu/:id', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
     }
 
-    const isPostgreSQL = process.env.DATABASE_URL || process.env.PGHOST;
 
-    if (isPostgreSQL) {
-      await run('DELETE FROM menu_items WHERE id = $1 AND restaurant_id = $2', [id, activeRestaurantId]);
-    } else {
-      await run('DELETE FROM menu_items WHERE id = ? AND restaurant_id = ?', [id, activeRestaurantId]);
-    }
+    await run('DELETE FROM menu_items WHERE id = $1 AND restaurant_id = $2', [id, activeRestaurantId]);
     res.json({ success: true });
   } catch (error) {
     console.error('Erreur suppression menu item:', error);
@@ -791,18 +754,11 @@ app.post('/api/init-menu', requireAuth, async (req, res) => {
       { name: "Champagne", description: "Brut, coupe 12cl", price: 12.00, category: "boisson_alcoolise" }
     ];
 
-    const isPostgreSQL = process.env.DATABASE_URL || process.env.PGHOST;
     let insertedCount = 0;
 
     // D'abord, vérifier s'il y a déjà des menus pour ce restaurant
-    let existingMenuCount;
-    if (isPostgreSQL) {
-      const result = await get('SELECT COUNT(*) as count FROM menu_items WHERE restaurant_id = $1', [activeRestaurantId]);
-      existingMenuCount = result.count;
-    } else {
-      const result = await get('SELECT COUNT(*) as count FROM menu_items WHERE restaurant_id = ?', [activeRestaurantId]);
-      existingMenuCount = result.count;
-    }
+    const result = await get('SELECT COUNT(*) as count FROM menu_items WHERE restaurant_id = $1', [activeRestaurantId]);
+    const existingMenuCount = result.count;
 
     if (existingMenuCount > 0) {
       return res.json({
@@ -817,17 +773,10 @@ app.post('/api/init-menu', requireAuth, async (req, res) => {
 
     for (const item of menuData) {
       try {
-        if (isPostgreSQL) {
-          await run(`
-            INSERT INTO menu_items (name, description, price, category, restaurant_id, is_available)
-            VALUES ($1, $2, $3, $4, $5, 1)
-          `, [item.name, item.description, item.price, item.category, activeRestaurantId]);
-        } else {
-          await run(`
-            INSERT INTO menu_items (name, description, price, category, restaurant_id, is_available)
-            VALUES (?, ?, ?, ?, ?, 1)
-          `, [item.name, item.description, item.price, item.category, activeRestaurantId]);
-        }
+        await run(`
+          INSERT INTO menu_items (name, description, price, category, restaurant_id, is_available)
+          VALUES ($1, $2, $3, $4, $5, 1)
+        `, [item.name, item.description, item.price, item.category, activeRestaurantId]);
         insertedCount++;
         console.log(`✅ Item "${item.name}" ajouté pour le restaurant ${activeRestaurantId}`);
       } catch (error) {
@@ -860,7 +809,7 @@ app.get('/api/tables', requireAuth, async (req, res) => {
       SELECT t.*, r.name as room_name, r.color as room_color
       FROM tables t
       JOIN rooms r ON t.room_id = r.id
-      WHERE r.restaurant_id = ?
+      WHERE r.restaurant_id = $1
       ORDER BY r.name, t.table_number
     `, [activeRestaurantId]);
 
@@ -904,7 +853,7 @@ app.post('/api/tables', requireAuth, async (req, res) => {
     // Vérifier que la salle appartient au restaurant actif
     console.log('🔍 Vérification salle:', { finalRoomId, activeRestaurantId });
     const existingRoom = await get(
-      'SELECT * FROM rooms WHERE id = ? AND restaurant_id = ?',
+      'SELECT * FROM rooms WHERE id = $1 AND restaurant_id = $2',
       [finalRoomId, activeRestaurantId]
     );
 
@@ -916,7 +865,7 @@ app.post('/api/tables', requireAuth, async (req, res) => {
 
     // Vérifier que le numéro de table n'existe pas déjà dans cette salle
     const existingTable = await get(
-      'SELECT * FROM tables WHERE table_number = ? AND room_id = ?',
+      'SELECT * FROM tables WHERE table_number = $1 AND room_id = $2',
       [finalTableNumber, finalRoomId]
     );
 
@@ -927,7 +876,7 @@ app.post('/api/tables', requireAuth, async (req, res) => {
     // Créer la table
     console.log('💾 Tentative création table...');
     const result = await run(
-      'INSERT INTO tables (table_number, room_id, capacity, status, x_position, y_position, shape, table_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO tables (table_number, room_id, capacity, status, x_position, y_position, shape, table_size) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)',
       [finalTableNumber, finalRoomId, finalCapacity, 'available', 50, 50, 'round', 'medium']
     );
 
@@ -939,7 +888,7 @@ app.post('/api/tables', requireAuth, async (req, res) => {
 
     // Mettre à jour la table avec le QR code
     if (qrCodeUrl) {
-      await run('UPDATE tables SET qr_code = ? WHERE id = ?', [qrCodeUrl, tableId]);
+      await run('UPDATE tables SET qr_code = $1 WHERE id = $2', [qrCodeUrl, tableId]);
     }
     res.json({
       success: true,
@@ -990,7 +939,7 @@ app.put('/api/tables/:id/appearance', requireAuth, async (req, res) => {
       SELECT t.*, r.restaurant_id
       FROM tables t
       JOIN rooms r ON t.room_id = r.id
-      WHERE t.id = ? AND r.restaurant_id = ?
+      WHERE t.id = $1 AND r.restaurant_id = $2
     `, [tableId, activeRestaurantId]);
 
     if (!existingTable) {
@@ -1001,14 +950,17 @@ app.put('/api/tables/:id/appearance', requireAuth, async (req, res) => {
     const updates = [];
     const params = [];
 
+    let paramIndex = 1;
     if (shape) {
-      updates.push('shape = ?');
+      updates.push(`shape = $${paramIndex}`);
       params.push(shape);
+      paramIndex++;
     }
 
     if (table_size) {
-      updates.push('table_size = ?');
+      updates.push(`table_size = $${paramIndex}`);
       params.push(table_size);
+      paramIndex++;
     }
 
     if (updates.length === 0) {
@@ -1019,7 +971,7 @@ app.put('/api/tables/:id/appearance', requireAuth, async (req, res) => {
 
     // Mettre à jour l'apparence
     await run(
-      `UPDATE tables SET ${updates.join(', ')} WHERE id = ?`,
+      `UPDATE tables SET ${updates.join(', ')} WHERE id = $${params.length}`,
       params
     );
 
@@ -1051,7 +1003,7 @@ app.put('/api/tables/:id/position', requireAuth, async (req, res) => {
       SELECT t.*, r.restaurant_id
       FROM tables t
       JOIN rooms r ON t.room_id = r.id
-      WHERE t.id = ? AND r.restaurant_id = ?
+      WHERE t.id = $1 AND r.restaurant_id = $2
     `, [tableId, activeRestaurantId]);
 
     if (!existingTable) {
@@ -1060,7 +1012,7 @@ app.put('/api/tables/:id/position', requireAuth, async (req, res) => {
 
     // Mettre à jour la position
     await run(
-      'UPDATE tables SET x_position = ?, y_position = ? WHERE id = ?',
+      'UPDATE tables SET x_position = $1, y_position = $2 WHERE id = $3',
       [x, y, tableId]
     );
 
@@ -1087,7 +1039,7 @@ app.post('/api/tables/:id/generate-qr', requireAuth, async (req, res) => {
       SELECT t.*, r.restaurant_id
       FROM tables t
       JOIN rooms r ON t.room_id = r.id
-      WHERE t.id = ? AND r.restaurant_id = ?
+      WHERE t.id = $1 AND r.restaurant_id = $2
     `, [tableId, activeRestaurantId]);
 
     if (!table) {
@@ -1099,7 +1051,7 @@ app.post('/api/tables/:id/generate-qr', requireAuth, async (req, res) => {
 
     if (qrCodeUrl) {
       // Mettre à jour la table avec le nouveau QR code
-      await run('UPDATE tables SET qr_code = ? WHERE id = ?', [qrCodeUrl, tableId]);
+      await run('UPDATE tables SET qr_code = $1 WHERE id = $2', [qrCodeUrl, tableId]);
 
       res.json({
         success: true,
@@ -1132,7 +1084,7 @@ app.post('/api/restaurants/:restaurantId/regenerate-qr-codes', requireAuth, asyn
       SELECT t.*
       FROM tables t
       JOIN rooms r ON t.room_id = r.id
-      WHERE r.restaurant_id = ?
+      WHERE r.restaurant_id = $1
     `, [restaurantId]);
 
     let updated = 0;
@@ -1142,7 +1094,7 @@ app.post('/api/restaurants/:restaurantId/regenerate-qr-codes', requireAuth, asyn
       try {
         const qrCodeUrl = await generateQRCodeForTable(table.id, table.table_number, restaurantId);
         if (qrCodeUrl) {
-          await run('UPDATE tables SET qr_code = ? WHERE id = ?', [qrCodeUrl, table.id]);
+          await run('UPDATE tables SET qr_code = $1 WHERE id = $2', [qrCodeUrl, table.id]);
           updated++;
         }
       } catch (error) {
@@ -1190,7 +1142,7 @@ app.put('/api/tables/:id', requireAuth, async (req, res) => {
       SELECT t.*, r.restaurant_id
       FROM tables t
       JOIN rooms r ON t.room_id = r.id
-      WHERE t.id = ? AND r.restaurant_id = ?
+      WHERE t.id = $1 AND r.restaurant_id = $2
     `, [tableId, activeRestaurantId]);
 
     if (!existingTable) {
@@ -1199,7 +1151,7 @@ app.put('/api/tables/:id', requireAuth, async (req, res) => {
 
     // Mettre à jour la table
     await run(
-      'UPDATE tables SET table_number = ?, capacity = ?, status = ? WHERE id = ?',
+      'UPDATE tables SET table_number = $1, capacity = $2, status = $3 WHERE id = $4',
       [table_number, capacity, status || existingTable.status, tableId]
     );
 
@@ -1234,7 +1186,7 @@ app.delete('/api/tables/:id', requireAuth, async (req, res) => {
       SELECT t.*, r.restaurant_id
       FROM tables t
       JOIN rooms r ON t.room_id = r.id
-      WHERE t.id = ? AND r.restaurant_id = ?
+      WHERE t.id = $1 AND r.restaurant_id = $2
     `, [tableId, activeRestaurantId]);
 
     if (!existingTable) {
@@ -1242,7 +1194,7 @@ app.delete('/api/tables/:id', requireAuth, async (req, res) => {
     }
 
     // Supprimer la table
-    await run('DELETE FROM tables WHERE id = ?', [tableId]);
+    await run('DELETE FROM tables WHERE id = $1', [tableId]);
 
     res.json({
       success: true,
@@ -1273,7 +1225,7 @@ app.get('/api/rooms', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
     }
 
-    const rooms = await query('SELECT * FROM rooms WHERE restaurant_id = ? ORDER BY name', [activeRestaurantId]);
+    const rooms = await query('SELECT * FROM rooms WHERE restaurant_id = $1 ORDER BY name', [activeRestaurantId]);
     console.log(`📋 Salles récupérées pour restaurant ${activeRestaurantId}:`, rooms.length);
     res.json(rooms);
   } catch (error) {
@@ -1315,7 +1267,7 @@ app.post('/api/rooms', requireAuth, async (req, res) => {
     // Créer la salle avec restaurant_id et dimensions
     console.log('💾 Tentative création salle...');
     const result = await run(
-      'INSERT INTO rooms (name, color, width, height, restaurant_id) VALUES (?, ?, ?, ?, ?)',
+      'INSERT INTO rooms (name, color, width, height, restaurant_id) VALUES ($1, $2, $3, $4, $5)',
       [name, color, width || 600, height || 400, activeRestaurantId]
     );
 
@@ -1349,47 +1301,16 @@ app.post('/api/debug/migrate-tables', requireAuth, async (req, res) => {
   try {
     console.log('🔄 Migration des tables...');
 
-    if (isPostgreSQL) {
-      // PostgreSQL - ajouter les colonnes si elles n'existent pas
-      try {
-        await run('ALTER TABLE tables ADD COLUMN IF NOT EXISTS qr_code TEXT');
-        await run('ALTER TABLE tables ADD COLUMN IF NOT EXISTS x_position INTEGER DEFAULT 50');
-        await run('ALTER TABLE tables ADD COLUMN IF NOT EXISTS y_position INTEGER DEFAULT 50');
-        await run("ALTER TABLE tables ADD COLUMN IF NOT EXISTS shape TEXT DEFAULT 'round'");
-        await run("ALTER TABLE tables ADD COLUMN IF NOT EXISTS table_size TEXT DEFAULT 'medium'");
-        console.log('✅ Colonnes PostgreSQL ajoutées');
-      } catch (error) {
-        console.log('⚠️ Colonnes déjà existantes ou erreur:', error.message);
-      }
-    } else {
-      // SQLite - vérifier et ajouter les colonnes
-      const tableInfo = await query('PRAGMA table_info(tables)');
-      const columnNames = tableInfo.map(col => col.name);
-
-      if (!columnNames.includes('qr_code')) {
-        await run('ALTER TABLE tables ADD COLUMN qr_code TEXT');
-        console.log('✅ Colonne qr_code ajoutée');
-      }
-
-      if (!columnNames.includes('x_position')) {
-        await run('ALTER TABLE tables ADD COLUMN x_position INTEGER DEFAULT 50');
-        console.log('✅ Colonne x_position ajoutée');
-      }
-
-      if (!columnNames.includes('y_position')) {
-        await run('ALTER TABLE tables ADD COLUMN y_position INTEGER DEFAULT 50');
-        console.log('✅ Colonne y_position ajoutée');
-      }
-
-      if (!columnNames.includes('shape')) {
-        await run("ALTER TABLE tables ADD COLUMN shape TEXT DEFAULT 'round'");
-        console.log('✅ Colonne shape ajoutée');
-      }
-
-      if (!columnNames.includes('table_size')) {
-        await run("ALTER TABLE tables ADD COLUMN table_size TEXT DEFAULT 'medium'");
-        console.log('✅ Colonne table_size ajoutée');
-      }
+    // PostgreSQL - ajouter les colonnes si elles n'existent pas
+    try {
+      await run('ALTER TABLE tables ADD COLUMN IF NOT EXISTS qr_code TEXT');
+      await run('ALTER TABLE tables ADD COLUMN IF NOT EXISTS x_position INTEGER DEFAULT 50');
+      await run('ALTER TABLE tables ADD COLUMN IF NOT EXISTS y_position INTEGER DEFAULT 50');
+      await run("ALTER TABLE tables ADD COLUMN IF NOT EXISTS shape TEXT DEFAULT 'round'");
+      await run("ALTER TABLE tables ADD COLUMN IF NOT EXISTS table_size TEXT DEFAULT 'medium'");
+      console.log('✅ Colonnes PostgreSQL ajoutées');
+    } catch (error) {
+      console.log('⚠️ Colonnes déjà existantes ou erreur:', error.message);
     }
 
     // Mettre à jour les positions par défaut pour les tables sans position
@@ -1413,25 +1334,18 @@ app.post('/api/debug/migrate-tables', requireAuth, async (req, res) => {
 // Route de debug temporaire pour vérifier la structure des tables
 app.get('/api/debug/tables-structure', requireAuth, async (req, res) => {
   try {
-    if (isPostgreSQL) {
-      // PostgreSQL
-      const roomsStructure = await query(`
-        SELECT column_name, data_type
-        FROM information_schema.columns
-        WHERE table_name = 'rooms'
-      `);
-      const tablesStructure = await query(`
-        SELECT column_name, data_type
-        FROM information_schema.columns
-        WHERE table_name = 'tables'
-      `);
-      res.json({ rooms: roomsStructure, tables: tablesStructure });
-    } else {
-      // SQLite
-      const roomsStructure = await query('PRAGMA table_info(rooms)');
-      const tablesStructure = await query('PRAGMA table_info(tables)');
-      res.json({ rooms: roomsStructure, tables: tablesStructure });
-    }
+    // PostgreSQL
+    const roomsStructure = await query(`
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_name = 'rooms'
+    `);
+    const tablesStructure = await query(`
+      SELECT column_name, data_type
+      FROM information_schema.columns
+      WHERE table_name = 'tables'
+    `);
+    res.json({ rooms: roomsStructure, tables: tablesStructure });
   } catch (error) {
     console.error('Erreur structure debug:', error);
     res.status(500).json({ error: error.message });
@@ -1480,7 +1394,7 @@ app.put('/api/rooms/:id', requireAuth, async (req, res) => {
 
     // Vérifier que la salle appartient au restaurant actif
     const existingRoom = await get(
-      'SELECT * FROM rooms WHERE id = ? AND restaurant_id = ?',
+      'SELECT * FROM rooms WHERE id = $1 AND restaurant_id = $2',
       [roomId, activeRestaurantId]
     );
 
@@ -1490,7 +1404,7 @@ app.put('/api/rooms/:id', requireAuth, async (req, res) => {
 
     // Mettre à jour la salle
     await run(
-      'UPDATE rooms SET name = ?, color = ? WHERE id = ? AND restaurant_id = ?',
+      'UPDATE rooms SET name = $1, color = $2 WHERE id = $3 AND restaurant_id = $4',
       [name, color, roomId, activeRestaurantId]
     );
 
@@ -1522,7 +1436,7 @@ app.delete('/api/rooms/:id', requireAuth, async (req, res) => {
 
     // Vérifier que la salle appartient au restaurant actif
     const existingRoom = await get(
-      'SELECT * FROM rooms WHERE id = ? AND restaurant_id = ?',
+      'SELECT * FROM rooms WHERE id = $1 AND restaurant_id = $2',
       [roomId, activeRestaurantId]
     );
 
@@ -1531,10 +1445,10 @@ app.delete('/api/rooms/:id', requireAuth, async (req, res) => {
     }
 
     // Supprimer d'abord toutes les tables associées
-    await run('DELETE FROM tables WHERE room_id = ?', [roomId]);
+    await run('DELETE FROM tables WHERE room_id = $1', [roomId]);
 
     // Supprimer la salle
-    await run('DELETE FROM rooms WHERE id = ? AND restaurant_id = ?', [roomId, activeRestaurantId]);
+    await run('DELETE FROM rooms WHERE id = $1 AND restaurant_id = $2', [roomId, activeRestaurantId]);
 
     res.json({
       success: true,
@@ -1554,7 +1468,7 @@ app.get('/api/ingredients', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
     }
 
-    const ingredients = await query('SELECT * FROM ingredients WHERE restaurant_id = ? ORDER BY name', [activeRestaurantId]);
+    const ingredients = await query('SELECT * FROM ingredients WHERE restaurant_id = $1 ORDER BY name', [activeRestaurantId]);
     res.json(ingredients);
   } catch (error) {
     console.error('Erreur ingredients:', error);
@@ -1577,7 +1491,7 @@ app.post('/api/ingredients', requireAuth, async (req, res) => {
     }
 
     const result = await run(
-      'INSERT INTO ingredients (name, unit, stock_quantity, min_quantity, cost_per_unit, supplier, restaurant_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO ingredients (name, unit, stock_quantity, min_quantity, cost_per_unit, supplier, restaurant_id) VALUES ($1, $2, $3, $4, $5, $6, $7)',
       [name, unit, stock_quantity || 0, min_quantity || 0, cost_per_unit || 0, supplier || null, activeRestaurantId]
     );
 
@@ -1610,7 +1524,7 @@ app.put('/api/ingredients/:id', requireAuth, async (req, res) => {
 
     // Vérifier que l'ingrédient appartient au restaurant
     const existingIngredient = await get(
-      'SELECT id FROM ingredients WHERE id = ? AND restaurant_id = ?',
+      'SELECT id FROM ingredients WHERE id = $1 AND restaurant_id = $2',
       [ingredientId, activeRestaurantId]
     );
 
@@ -1619,7 +1533,7 @@ app.put('/api/ingredients/:id', requireAuth, async (req, res) => {
     }
 
     await run(
-      'UPDATE ingredients SET name = ?, unit = ?, stock_quantity = ?, min_quantity = ?, cost_per_unit = ?, supplier = ? WHERE id = ? AND restaurant_id = ?',
+      'UPDATE ingredients SET name = $1, unit = $2, stock_quantity = $3, min_quantity = $4, cost_per_unit = $5, supplier = $6 WHERE id = $7 AND restaurant_id = $8',
       [name, unit, stock_quantity || 0, min_quantity || 0, cost_per_unit || 0, supplier || null, ingredientId, activeRestaurantId]
     );
 
@@ -1646,7 +1560,7 @@ app.delete('/api/ingredients/:id', requireAuth, async (req, res) => {
 
     // Vérifier que l'ingrédient appartient au restaurant
     const existingIngredient = await get(
-      'SELECT id FROM ingredients WHERE id = ? AND restaurant_id = ?',
+      'SELECT id FROM ingredients WHERE id = $1 AND restaurant_id = $2',
       [ingredientId, activeRestaurantId]
     );
 
@@ -1654,7 +1568,7 @@ app.delete('/api/ingredients/:id', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Ingrédient non trouvé' });
     }
 
-    await run('DELETE FROM ingredients WHERE id = ? AND restaurant_id = ?', [ingredientId, activeRestaurantId]);
+    await run('DELETE FROM ingredients WHERE id = $1 AND restaurant_id = $2', [ingredientId, activeRestaurantId]);
 
     res.json({
       success: true,
@@ -1675,7 +1589,7 @@ app.get('/api/my-restaurants', requireAuth, async (req, res) => {
       SELECT r.id, r.name, r.email, r.phone, r.address, ur.role as user_role
       FROM restaurants r
       JOIN user_restaurants ur ON r.id = ur.restaurant_id
-      WHERE ur.user_id = ?
+      WHERE ur.user_id = $1
       ORDER BY r.name
     `, [userId]);
 
@@ -1694,7 +1608,7 @@ app.post('/api/set-active-restaurant', requireAuth, async (req, res) => {
 
     // Vérifier que l'utilisateur a accès à ce restaurant
     const access = await get(
-      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = ? AND ur.restaurant_id = ?',
+      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = $1 AND ur.restaurant_id = $2',
       [userId, restaurantId]
     );
 
@@ -1704,7 +1618,7 @@ app.post('/api/set-active-restaurant', requireAuth, async (req, res) => {
 
     // Récupérer les informations du restaurant
     const restaurant = await get(
-      'SELECT id, name FROM restaurants WHERE id = ?',
+      'SELECT id, name FROM restaurants WHERE id = $1',
       [restaurantId]
     );
 
@@ -1793,7 +1707,7 @@ app.post('/api/create-restaurant', requireAuth, [
 
   try {
     // Récupérer les informations de l'utilisateur
-    const user = await get('SELECT first_name, last_name, email FROM users WHERE id = ?', [userId]);
+    const user = await get('SELECT first_name, last_name, email FROM users WHERE id = $1', [userId]);
 
     if (!user) {
       return res.status(404).json({ error: 'Utilisateur introuvable' });
@@ -1803,54 +1717,23 @@ app.post('/api/create-restaurant', requireAuth, [
     // Générer un email unique pour le restaurant si aucun fourni
     const restaurantEmail = email || `${name.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}@restaurant.local`;
 
-    // Requête adaptée selon le type de base de données
-    let restaurantResult;
-    if (isPostgreSQL) {
-      // PostgreSQL - utiliser RETURNING pour récupérer l'ID
-      restaurantResult = await query(
-        'INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
-        [
-          name,
-          `${user.first_name} ${user.last_name}`,
-          restaurantEmail,
-          'MANAGED_RESTAURANT',
-          phone,
-          address
-        ]
-      );
-    } else {
-      // SQLite - utiliser run normal
-      restaurantResult = await run(
-        'INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES (?, ?, ?, ?, ?, ?)',
-        [
-          name,
-          `${user.first_name} ${user.last_name}`,
-          restaurantEmail,
-          'MANAGED_RESTAURANT',
-          phone,
-          address
-        ]
-      );
-    }
+    // PostgreSQL - utiliser RETURNING pour récupérer l'ID
+    const restaurantResult = await query(
+      'INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES ($1, $2, $3, $4, $5, $6) RETURNING id',
+      [
+        name,
+        `${user.first_name} ${user.last_name}`,
+        restaurantEmail,
+        'MANAGED_RESTAURANT',
+        phone,
+        address
+      ]
+    );
 
-    let restaurantId;
-    if (isPostgreSQL) {
-      restaurantId = restaurantResult[0].id;
-    } else {
-      // SQLite - plusieurs méthodes de fallback
-      restaurantId = restaurantResult.lastID;
-      if (!restaurantId && restaurantResult.insertId) {
-        restaurantId = restaurantResult.insertId;
-      }
-      if (!restaurantId) {
-        // Dernière option : récupérer le dernier ID inséré
-        const lastRow = await get('SELECT last_insert_rowid() as id');
-        restaurantId = lastRow ? lastRow.id : null;
-      }
-    }
+    const restaurantId = restaurantResult[0].id;
 
     console.log('=== DEBUG RESTAURANT CREATION ===');
-    console.log('isPostgreSQL:', isPostgreSQL);
+    console.log('Base de données: PostgreSQL (forcée)');
     console.log('restaurantResult:', restaurantResult);
     console.log('restaurantId final:', restaurantId);
 
@@ -1860,7 +1743,7 @@ app.post('/api/create-restaurant', requireAuth, [
 
     // Lier l'utilisateur au nouveau restaurant comme propriétaire
     await run(
-      'INSERT INTO user_restaurants (user_id, restaurant_id, role) VALUES (?, ?, ?)',
+      'INSERT INTO user_restaurants (user_id, restaurant_id, role) VALUES ($1, $2, $3)',
       [userId, restaurantId, 'RESTAURATEUR']
     );
 
@@ -1869,7 +1752,7 @@ app.post('/api/create-restaurant', requireAuth, [
       SELECT r.id, r.name, ur.role as user_role
       FROM restaurants r
       JOIN user_restaurants ur ON r.id = ur.restaurant_id
-      WHERE ur.user_id = ?
+      WHERE ur.user_id = $1
       ORDER BY r.name
     `, [userId]);
 
@@ -1951,7 +1834,7 @@ app.post('/api/create-user', requireAuth, [
   try {
     // Vérifier que le restaurateur a bien accès à ce restaurant
     const restaurantAccess = await get(
-      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = ? AND ur.restaurant_id = ?',
+      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = $1 AND ur.restaurant_id = $2',
       [userId, activeRestaurantId]
     );
 
@@ -1960,7 +1843,7 @@ app.post('/api/create-user', requireAuth, [
     }
 
     // Vérifier si l'email existe déjà
-    const existingUser = await get('SELECT id FROM users WHERE email = ?', [email]);
+    const existingUser = await get('SELECT id FROM users WHERE email = $1', [email]);
     if (existingUser) {
       return res.status(400).json({ error: 'Cet email est déjà utilisé' });
     }
@@ -1971,7 +1854,7 @@ app.post('/api/create-user', requireAuth, [
 
     // Créer l'utilisateur (sans notes pour l'instant)
     const userResult = await run(
-      'INSERT INTO users (email, password_hash, first_name, last_name, phone, role) VALUES (?, ?, ?, ?, ?, ?)',
+      'INSERT INTO users (email, password_hash, first_name, last_name, phone, role) VALUES ($1, $2, $3, $4, $5, $6)',
       [email, hashedPassword, firstName, lastName, phone, role]
     );
 
@@ -1979,7 +1862,7 @@ app.post('/api/create-user', requireAuth, [
 
     // Lier l'utilisateur au restaurant
     await run(
-      'INSERT INTO user_restaurants (user_id, restaurant_id, role) VALUES (?, ?, ?)',
+      'INSERT INTO user_restaurants (user_id, restaurant_id, role) VALUES ($1, $2, $3)',
       [newUserId, activeRestaurantId, role]
     );
 
@@ -2015,7 +1898,7 @@ app.get('/api/restaurant-team', requireAuth, async (req, res) => {
 
     // Vérifier l'accès au restaurant
     const restaurantAccess = await get(
-      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = ? AND ur.restaurant_id = ?',
+      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = $1 AND ur.restaurant_id = $2',
       [userId, activeRestaurantId]
     );
 
@@ -2028,7 +1911,7 @@ app.get('/api/restaurant-team', requireAuth, async (req, res) => {
       SELECT u.id, u.first_name, u.last_name, u.email, u.phone, u.role, u.is_active, ur.role as restaurant_role
       FROM users u
       JOIN user_restaurants ur ON u.id = ur.user_id
-      WHERE ur.restaurant_id = ? AND u.role != 'SUPER_ADMIN'
+      WHERE ur.restaurant_id = $1 AND u.role != 'SUPER_ADMIN'
       ORDER BY u.role, u.last_name, u.first_name
     `, [activeRestaurantId]);
 
@@ -2063,7 +1946,7 @@ app.delete('/api/delete-user/:id', requireAuth, async (req, res) => {
 
     // Vérifier que l'utilisateur à supprimer appartient bien au restaurant
     const userAccess = await get(
-      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = ? AND ur.restaurant_id = ?',
+      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = $1 AND ur.restaurant_id = $2',
       [userIdToDelete, activeRestaurantId]
     );
 
@@ -2073,18 +1956,18 @@ app.delete('/api/delete-user/:id', requireAuth, async (req, res) => {
 
     // Supprimer la liaison restaurant
     await run(
-      'DELETE FROM user_restaurants WHERE user_id = ? AND restaurant_id = ?',
+      'DELETE FROM user_restaurants WHERE user_id = $1 AND restaurant_id = $2',
       [userIdToDelete, activeRestaurantId]
     );
 
     // Si l'utilisateur n'a plus d'autre restaurant, le désactiver
     const otherRestaurants = await query(
-      'SELECT COUNT(*) as count FROM user_restaurants WHERE user_id = ?',
+      'SELECT COUNT(*) as count FROM user_restaurants WHERE user_id = $1',
       [userIdToDelete]
     );
 
     if (otherRestaurants[0].count === 0) {
-      await run('UPDATE users SET is_active = 0 WHERE id = ?', [userIdToDelete]);
+      await run('UPDATE users SET is_active = 0 WHERE id = $1', [userIdToDelete]);
     }
 
     res.json({ success: true, message: 'Utilisateur supprimé avec succès' });
@@ -2122,7 +2005,7 @@ app.put('/api/update-user/:id', requireAuth, async (req, res) => {
 
     // Vérifier que l'utilisateur à modifier appartient bien au restaurant
     const userAccess = await get(
-      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = ? AND ur.restaurant_id = ?',
+      'SELECT ur.role FROM user_restaurants ur WHERE ur.user_id = $1 AND ur.restaurant_id = $2',
       [userIdToUpdate, activeRestaurantId]
     );
 
@@ -2132,7 +2015,7 @@ app.put('/api/update-user/:id', requireAuth, async (req, res) => {
 
     // Vérifier que l'email n'est pas déjà utilisé par un autre utilisateur
     const existingUser = await get(
-      'SELECT id FROM users WHERE email = ? AND id != ?',
+      'SELECT id FROM users WHERE email = $1 AND id != $2',
       [email, userIdToUpdate]
     );
 
@@ -2142,13 +2025,13 @@ app.put('/api/update-user/:id', requireAuth, async (req, res) => {
 
     // Mettre à jour les informations de l'utilisateur
     await run(
-      'UPDATE users SET first_name = ?, last_name = ?, email = ?, phone = ?, is_active = ? WHERE id = ?',
+      'UPDATE users SET first_name = $1, last_name = $2, email = $3, phone = $4, is_active = $5 WHERE id = $6',
       [firstName, lastName, email, phone || null, isActive ? 1 : 0, userIdToUpdate]
     );
 
     // Mettre à jour le rôle dans la table user_restaurants
     await run(
-      'UPDATE user_restaurants SET role = ? WHERE user_id = ? AND restaurant_id = ?',
+      'UPDATE user_restaurants SET role = $1 WHERE user_id = $2 AND restaurant_id = $3',
       [role, userIdToUpdate, activeRestaurantId]
     );
 
@@ -2167,7 +2050,7 @@ app.put('/api/update-user/:id', requireAuth, async (req, res) => {
 app.listen(PORT, () => {
   console.log(`🚀 Serveur démarré sur le port ${PORT}`);
   console.log(`🌍 Environnement: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`💾 Base de données: ${isPostgreSQL ? 'PostgreSQL (Railway)' : 'SQLite (local)'}`);
+  console.log(`💾 Base de données: PostgreSQL (Railway)`);
   console.log(`🚀 SERVEUR VERSION 2.1 - CORRECTION POSTGRESQL DEPLOYEE`);
 });
 

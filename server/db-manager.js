@@ -142,9 +142,8 @@ async function createTables() {
 }
 
 function getTableQueries() {
-  if (isPostgreSQL) {
-    return [
-      `CREATE TABLE IF NOT EXISTS restaurants (
+  return [
+    `CREATE TABLE IF NOT EXISTS restaurants (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         owner_name VARCHAR(255) NOT NULL,
@@ -156,7 +155,7 @@ function getTableQueries() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
 
-      `CREATE TABLE IF NOT EXISTS users (
+    `CREATE TABLE IF NOT EXISTS users (
         id SERIAL PRIMARY KEY,
         email VARCHAR(255) UNIQUE NOT NULL,
         password_hash VARCHAR(255) NOT NULL,
@@ -168,7 +167,7 @@ function getTableQueries() {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       )`,
 
-      `CREATE TABLE IF NOT EXISTS user_restaurants (
+    `CREATE TABLE IF NOT EXISTS user_restaurants (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
         restaurant_id INTEGER NOT NULL,
@@ -179,7 +178,7 @@ function getTableQueries() {
         FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
       )`,
 
-      `CREATE TABLE IF NOT EXISTS menu_items (
+    `CREATE TABLE IF NOT EXISTS menu_items (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         description TEXT,
@@ -192,7 +191,7 @@ function getTableQueries() {
         FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
       )`,
 
-      `CREATE TABLE IF NOT EXISTS rooms (
+    `CREATE TABLE IF NOT EXISTS rooms (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         color VARCHAR(20) DEFAULT '#e3f2fd',
@@ -203,7 +202,7 @@ function getTableQueries() {
         FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
       )`,
 
-      `CREATE TABLE IF NOT EXISTS tables (
+    `CREATE TABLE IF NOT EXISTS tables (
         id SERIAL PRIMARY KEY,
         table_number VARCHAR(50) NOT NULL,
         room_id INTEGER NOT NULL,
@@ -219,7 +218,7 @@ function getTableQueries() {
         UNIQUE(table_number, room_id)
       )`,
 
-      `CREATE TABLE IF NOT EXISTS ingredients (
+    `CREATE TABLE IF NOT EXISTS ingredients (
         id SERIAL PRIMARY KEY,
         name VARCHAR(255) NOT NULL,
         unit VARCHAR(50) NOT NULL,
@@ -232,7 +231,7 @@ function getTableQueries() {
         FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
       )`,
 
-      `CREATE TABLE IF NOT EXISTS orders (
+    `CREATE TABLE IF NOT EXISTS orders (
         id SERIAL PRIMARY KEY,
         table_id INTEGER,
         items TEXT,
@@ -246,112 +245,6 @@ function getTableQueries() {
         FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
       )`
     ];
-  } else {
-    // SQLite queries (existantes)
-    return [
-      `CREATE TABLE IF NOT EXISTS restaurants (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        owner_name TEXT NOT NULL,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        phone TEXT,
-        address TEXT,
-        is_active INTEGER DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )`,
-
-      `CREATE TABLE IF NOT EXISTS users (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        email TEXT UNIQUE NOT NULL,
-        password_hash TEXT NOT NULL,
-        first_name TEXT NOT NULL,
-        last_name TEXT NOT NULL,
-        phone TEXT,
-        role TEXT NOT NULL CHECK (role IN ('SUPER_ADMIN', 'RESTAURATEUR', 'MANAGER', 'EMPLOYE')),
-        is_active INTEGER DEFAULT 1,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )`,
-
-      `CREATE TABLE IF NOT EXISTS user_restaurants (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        user_id INTEGER NOT NULL,
-        restaurant_id INTEGER NOT NULL,
-        role TEXT NOT NULL CHECK (role IN ('RESTAURATEUR', 'MANAGER', 'EMPLOYE')),
-        permissions TEXT,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (user_id) REFERENCES users (id),
-        FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
-      )`,
-
-      `CREATE TABLE IF NOT EXISTS menu_items (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        description TEXT,
-        price REAL NOT NULL,
-        category TEXT,
-        image_url TEXT,
-        is_available INTEGER DEFAULT 1,
-        restaurant_id INTEGER NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
-      )`,
-
-      `CREATE TABLE IF NOT EXISTS rooms (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        color TEXT DEFAULT '#e3f2fd',
-        width INTEGER DEFAULT 600,
-        height INTEGER DEFAULT 400,
-        restaurant_id INTEGER NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
-      )`,
-
-      `CREATE TABLE IF NOT EXISTS tables (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        table_number TEXT NOT NULL,
-        room_id INTEGER NOT NULL,
-        capacity INTEGER NOT NULL DEFAULT 4,
-        status TEXT DEFAULT 'available' CHECK (status IN ('available', 'occupied', 'reserved', 'maintenance')),
-        qr_code TEXT,
-        x_position INTEGER DEFAULT 50,
-        y_position INTEGER DEFAULT 50,
-        shape TEXT DEFAULT 'round' CHECK (shape IN ('round', 'square')),
-        table_size TEXT DEFAULT 'medium' CHECK (table_size IN ('small', 'medium', 'large')),
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (room_id) REFERENCES rooms (id),
-        UNIQUE(table_number, room_id)
-      )`,
-
-      `CREATE TABLE IF NOT EXISTS ingredients (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        name TEXT NOT NULL,
-        unit TEXT NOT NULL,
-        stock_quantity REAL DEFAULT 0,
-        min_quantity REAL DEFAULT 0,
-        cost_per_unit REAL DEFAULT 0,
-        supplier TEXT,
-        restaurant_id INTEGER NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
-      )`,
-
-      `CREATE TABLE IF NOT EXISTS orders (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        table_id INTEGER,
-        items TEXT,
-        total_amount REAL,
-        status TEXT DEFAULT 'en_attente',
-        customer_name TEXT,
-        notes TEXT,
-        restaurant_id INTEGER NOT NULL,
-        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-        FOREIGN KEY (table_id) REFERENCES tables (id),
-        FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
-      )`
-    ];
-  }
 }
 
 async function createTestAccounts() {
@@ -365,13 +258,13 @@ async function createTestAccounts() {
     const superAdminPassword = await bcrypt.hash('venezesas542sp', 10);
 
     // Vérifier si le restaurant existe déjà
-    const existingRestaurant = await get(`SELECT id FROM restaurants WHERE email = ?`, ['restaurateur@test.com']);
+    const existingRestaurant = await get(`SELECT id FROM restaurants WHERE email = $1`, ['restaurateur@test.com']);
 
     let restaurantId;
     if (!existingRestaurant) {
       // Créer le restaurant
       const restaurantResult = await run(
-        `INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES (?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO restaurants (name, owner_name, email, password_hash, phone, address) VALUES ($1, $2, $3, $4, $5, $6)`,
         ['Restaurant Le Gourmet', 'Jean Dupont', 'restaurateur@test.com', restaurateurPassword, '0123456789', '123 Rue de la Paix, Paris']
       );
       restaurantId = restaurantResult.lastID || 1;
@@ -390,21 +283,21 @@ async function createTestAccounts() {
     ];
 
     for (const [email, password, firstName, lastName, phone, role] of users) {
-      const existingUser = await get(`SELECT id FROM users WHERE email = ?`, [email]);
+      const existingUser = await get(`SELECT id FROM users WHERE email = $1`, [email]);
 
       if (!existingUser) {
         const userResult = await run(
-          `INSERT INTO users (email, password_hash, first_name, last_name, phone, role) VALUES (?, ?, ?, ?, ?, ?)`,
+          `INSERT INTO users (email, password_hash, first_name, last_name, phone, role) VALUES ($1, $2, $3, $4, $5, $6)`,
           [email, password, firstName, lastName, phone, role]
         );
 
-        const userId = userResult.lastID || (await get(`SELECT id FROM users WHERE email = ?`, [email])).id;
+        const userId = userResult.lastID || (await get(`SELECT id FROM users WHERE email = $1`, [email])).id;
         console.log(`✅ ${role} créé - ID:`, userId);
 
         // Lier au restaurant (sauf Super Admin)
         if (role !== 'SUPER_ADMIN') {
           await run(
-            `INSERT INTO user_restaurants (user_id, restaurant_id, role) VALUES (?, ?, ?)`,
+            `INSERT INTO user_restaurants (user_id, restaurant_id, role) VALUES ($1, $2, $3)`,
             [userId, restaurantId, role]
           );
           console.log(`✅ ${role} lié au restaurant`);
