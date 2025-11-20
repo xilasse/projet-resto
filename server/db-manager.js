@@ -5,10 +5,27 @@ const bcrypt = require('bcryptjs');
 let db;
 let isPostgreSQL = false;
 
+// Debug des variables d'environnement
+console.log('🔍 DIAGNOSTIC ENVIRONNEMENT:');
+console.log('- DATABASE_URL:', process.env.DATABASE_URL ? '[DÉFINIE]' : '[NON DÉFINIE]');
+console.log('- PGHOST:', process.env.PGHOST || '[NON DÉFINIE]');
+console.log('- PGUSER:', process.env.PGUSER || '[NON DÉFINIE]');
+console.log('- PGDATABASE:', process.env.PGDATABASE || '[NON DÉFINIE]');
+console.log('- NODE_ENV:', process.env.NODE_ENV || '[NON DÉFINIE]');
+console.log('- PORT:', process.env.PORT || '[NON DÉFINIE]');
+
+// Vérification critique pour la production
+if (process.env.NODE_ENV === 'production' && !process.env.DATABASE_URL && !process.env.PGHOST) {
+  console.error('❌ ERREUR CRITIQUE: Environnement de production détecté mais aucune base PostgreSQL configurée !');
+  console.error('💡 SOLUTION: Ajoutez un service PostgreSQL sur Railway et configurez DATABASE_URL');
+  console.error('🚨 LES DONNÉES SERONT PERDUES À CHAQUE REDÉPLOIEMENT !');
+}
+
 // Initialiser la connexion selon l'environnement
 if (process.env.DATABASE_URL || process.env.PGHOST || process.env.PGUSER) {
   // Production - PostgreSQL sur Railway
   console.log('🔄 Connexion à PostgreSQL sur Railway...');
+  console.log('📊 Configuration PostgreSQL détectée');
   const { Client } = require('pg');
 
   const connectionConfig = process.env.DATABASE_URL ?
@@ -40,11 +57,15 @@ if (process.env.DATABASE_URL || process.env.PGHOST || process.env.PGUSER) {
 } else {
   // Développement - SQLite local
   console.log('🔄 Connexion à SQLite local...');
+  console.log('⚠️  ATTENTION: Utilisation de SQLite - les données seront perdues au redéploiement !');
+  console.log('💡 Pour utiliser PostgreSQL, définissez DATABASE_URL ou PGHOST dans les variables d\'environnement');
+
   db = new sqlite3.Database('./restaurant.db', (err) => {
     if (err) {
       console.error('❌ Erreur SQLite:', err);
     } else {
       console.log('✅ Connecté à SQLite');
+      console.log('📁 Fichier de base: ./restaurant.db');
       initializeDatabase();
     }
   });

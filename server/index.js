@@ -101,6 +101,30 @@ app.get('/api/version', (req, res) => {
   });
 });
 
+// Route pour diagnostiquer l'environnement (sans auth pour debugging)
+app.get('/api/debug/environment', (req, res) => {
+  const envInfo = {
+    database_type: isPostgreSQL ? 'PostgreSQL' : 'SQLite',
+    environment: {
+      NODE_ENV: process.env.NODE_ENV || 'undefined',
+      PORT: process.env.PORT || 'undefined',
+      DATABASE_URL: process.env.DATABASE_URL ? '[DÉFINIE]' : '[NON DÉFINIE]',
+      PGHOST: process.env.PGHOST || '[NON DÉFINIE]',
+      PGUSER: process.env.PGUSER || '[NON DÉFINIE]',
+      PGDATABASE: process.env.PGDATABASE || '[NON DÉFINIE]',
+      PGPORT: process.env.PGPORT || '[NON DÉFINIE]',
+      PGPASSWORD: process.env.PGPASSWORD ? '[DÉFINIE]' : '[NON DÉFINIE]'
+    },
+    platform: process.platform,
+    node_version: process.version,
+    timestamp: new Date().toISOString(),
+    warning: isPostgreSQL ? null : '⚠️ UTILISE SQLITE - DONNÉES PERDUES AU REDÉPLOIEMENT!'
+  };
+
+  console.log('🔍 Diagnostic environnement demandé:', envInfo);
+  res.json(envInfo);
+});
+
 
 // Redirection intelligente selon le rôle
 app.get('/', (req, res) => {
