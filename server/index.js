@@ -10,6 +10,30 @@ const { body, validationResult } = require('express-validator');
 // Gestionnaire de base de données adaptatif
 const { db, query, run, get, isPostgreSQL } = require('./db-manager');
 
+// Fonction pour générer un QR code pour une table
+async function generateQRCodeForTable(tableId, tableNumber, restaurantId) {
+  try {
+    // URL que le QR code pointera (menu client avec table ID)
+    const menuUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/client-menu.html?table=${tableId}&restaurant=${restaurantId}`;
+
+    // Générer le QR code en base64
+    const qrCodeDataURL = await QRCode.toDataURL(menuUrl, {
+      width: 300,
+      margin: 2,
+      color: {
+        dark: '#000000',
+        light: '#FFFFFF'
+      }
+    });
+
+    console.log(`✅ QR code généré pour table ${tableNumber} (ID: ${tableId})`);
+    return qrCodeDataURL;
+  } catch (error) {
+    console.error('Erreur génération QR code:', error);
+    return null;
+  }
+}
+
 const app = express();
 const PORT = process.env.PORT || 5000;
 
@@ -783,26 +807,167 @@ app.post('/api/tables', requireAuth, async (req, res) => {
     // Créer la table
     console.log('💾 Tentative création table...');
     const result = await run(
-      'INSERT INTO tables (table_number, room_id, capacity, status) VALUES (?, ?, ?, ?)',
-      [finalTableNumber, finalRoomId, finalCapacity, 'available']
+      'INSERT INTO tables (table_number, room_id, capacity, status, x_position, y_position) VALUES (?, ?, ?, ?, ?, ?)',
+      [finalTableNumber, finalRoomId, finalCapacity, 'available', 50, 50]
     );
 
-    console.log('✅ Table créée avec ID:', result.lastID);
+    const tableId = result.lastID;
+    console.log('✅ Table créée avec ID:', tableId);
+
+    // Générer le QR code pour cette table
+    const qrCodeUrl = await generateQRCodeForTable(tableId, finalTableNumber, activeRestaurantId);
+
+    // Mettre à jour la table avec le QR code
+    if (qrCodeUrl) {
+      await run('UPDATE tables SET qr_code = ? WHERE id = ?', [qrCodeUrl, tableId]);
+    }
     res.json({
       success: true,
       message: 'Table créée avec succès',
       table: {
-        id: result.lastID,
+        id: tableId,
         table_number: finalTableNumber,
         room_id: finalRoomId,
         capacity: finalCapacity,
-        status: 'available'
+        status: 'available',
+        qr_code: qrCodeUrl,
+        x_position: 50,
+        y_position: 50
       }
     });
 
   } catch (error) {
     console.error('Erreur création table:', error);
     res.status(500).json({ error: 'Erreur lors de la création de la table' });
+  }
+});
+
+// Route pour mettre à jour la position d'une table
+app.put('/api/tables/:id/position', requireAuth, async (req, res) => {
+  try {
+    const tableId = req.params.id;
+    const { x, y } = req.body;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    // Vérifier que la table appartient à une salle du restaurant actif
+    const existingTable = await get(`
+      SELECT t.*, r.restaurant_id
+      FROM tables t
+      JOIN rooms r ON t.room_id = r.id
+      WHERE t.id = ? AND r.restaurant_id = ?
+    `, [tableId, activeRestaurantId]);
+
+    if (!existingTable) {
+      return res.status(404).json({ error: 'Table non trouvée' });
+    }
+
+    // Mettre à jour la position
+    await run(
+      'UPDATE tables SET x_position = ?, y_position = ? WHERE id = ?',
+      [x, y, tableId]
+    );
+
+    res.json({ success: true });
+
+  } catch (error) {
+    console.error('Erreur mise à jour position table:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour de la position' });
+  }
+});
+
+// Route pour générer/régénérer le QR code d'une table
+app.post('/api/tables/:id/generate-qr', requireAuth, async (req, res) => {
+  try {
+    const tableId = req.params.id;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    // Récupérer la table
+    const table = await get(`
+      SELECT t.*, r.restaurant_id
+      FROM tables t
+      JOIN rooms r ON t.room_id = r.id
+      WHERE t.id = ? AND r.restaurant_id = ?
+    `, [tableId, activeRestaurantId]);
+
+    if (!table) {
+      return res.status(404).json({ error: 'Table non trouvée' });
+    }
+
+    // Générer le QR code
+    const qrCodeUrl = await generateQRCodeForTable(tableId, table.table_number, activeRestaurantId);
+
+    if (qrCodeUrl) {
+      // Mettre à jour la table avec le nouveau QR code
+      await run('UPDATE tables SET qr_code = ? WHERE id = ?', [qrCodeUrl, tableId]);
+
+      res.json({
+        success: true,
+        qr_code: qrCodeUrl,
+        message: `QR code généré pour la table ${table.table_number}`
+      });
+    } else {
+      res.status(500).json({ error: 'Erreur lors de la génération du QR code' });
+    }
+
+  } catch (error) {
+    console.error('Erreur génération QR code table:', error);
+    res.status(500).json({ error: 'Erreur lors de la génération du QR code' });
+  }
+});
+
+// Route pour régénérer tous les QR codes des tables d'un restaurant
+app.post('/api/restaurants/:restaurantId/regenerate-qr-codes', requireAuth, async (req, res) => {
+  try {
+    const restaurantId = req.params.restaurantId;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    // Vérifier l'accès
+    if (activeRestaurantId != restaurantId) {
+      return res.status(403).json({ error: 'Accès restaurant non autorisé' });
+    }
+
+    // Récupérer toutes les tables du restaurant
+    const tables = await query(`
+      SELECT t.*
+      FROM tables t
+      JOIN rooms r ON t.room_id = r.id
+      WHERE r.restaurant_id = ?
+    `, [restaurantId]);
+
+    let updated = 0;
+    const errors = [];
+
+    for (const table of tables) {
+      try {
+        const qrCodeUrl = await generateQRCodeForTable(table.id, table.table_number, restaurantId);
+        if (qrCodeUrl) {
+          await run('UPDATE tables SET qr_code = ? WHERE id = ?', [qrCodeUrl, table.id]);
+          updated++;
+        }
+      } catch (error) {
+        errors.push(`Table ${table.table_number}: ${error.message}`);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `${updated} QR codes mis à jour`,
+      total_tables: tables.length,
+      updated: updated,
+      errors: errors
+    });
+
+  } catch (error) {
+    console.error('Erreur régénération QR codes:', error);
+    res.status(500).json({ error: 'Erreur lors de la régénération des QR codes' });
   }
 });
 
@@ -981,6 +1146,60 @@ app.post('/api/rooms', requireAuth, async (req, res) => {
     console.error('Stack:', error.stack);
     res.status(500).json({
       error: 'Erreur lors de la création de la salle',
+      details: error.message
+    });
+  }
+});
+
+// Route pour migrer les tables existantes (ajouter colonnes manquantes)
+app.post('/api/debug/migrate-tables', requireAuth, async (req, res) => {
+  try {
+    console.log('🔄 Migration des tables...');
+
+    if (isPostgreSQL) {
+      // PostgreSQL - ajouter les colonnes si elles n'existent pas
+      try {
+        await run('ALTER TABLE tables ADD COLUMN IF NOT EXISTS qr_code TEXT');
+        await run('ALTER TABLE tables ADD COLUMN IF NOT EXISTS x_position INTEGER DEFAULT 50');
+        await run('ALTER TABLE tables ADD COLUMN IF NOT EXISTS y_position INTEGER DEFAULT 50');
+        console.log('✅ Colonnes PostgreSQL ajoutées');
+      } catch (error) {
+        console.log('⚠️ Colonnes déjà existantes ou erreur:', error.message);
+      }
+    } else {
+      // SQLite - vérifier et ajouter les colonnes
+      const tableInfo = await query('PRAGMA table_info(tables)');
+      const columnNames = tableInfo.map(col => col.name);
+
+      if (!columnNames.includes('qr_code')) {
+        await run('ALTER TABLE tables ADD COLUMN qr_code TEXT');
+        console.log('✅ Colonne qr_code ajoutée');
+      }
+
+      if (!columnNames.includes('x_position')) {
+        await run('ALTER TABLE tables ADD COLUMN x_position INTEGER DEFAULT 50');
+        console.log('✅ Colonne x_position ajoutée');
+      }
+
+      if (!columnNames.includes('y_position')) {
+        await run('ALTER TABLE tables ADD COLUMN y_position INTEGER DEFAULT 50');
+        console.log('✅ Colonne y_position ajoutée');
+      }
+    }
+
+    // Mettre à jour les positions par défaut pour les tables sans position
+    await run('UPDATE tables SET x_position = 50 WHERE x_position IS NULL');
+    await run('UPDATE tables SET y_position = 50 WHERE y_position IS NULL');
+
+    res.json({
+      success: true,
+      message: 'Migration des tables terminée avec succès'
+    });
+
+  } catch (error) {
+    console.error('Erreur migration tables:', error);
+    res.status(500).json({
+      error: 'Erreur lors de la migration',
       details: error.message
     });
   }

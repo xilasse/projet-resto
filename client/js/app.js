@@ -72,6 +72,60 @@ class RestaurantApp {
             this.openRoomModal();
         });
 
+        // Bouton de migration des tables
+        document.getElementById('migrateTablesBtn').addEventListener('click', async () => {
+            if (confirm('Voulez-vous migrer la base de données pour ajouter les colonnes manquantes aux tables ?\n\nCela est nécessaire pour activer les QR codes sur les tables existantes.')) {
+                try {
+                    const response = await fetch('/api/debug/migrate-tables', { method: 'POST' });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert('Migration réussie !\n' + result.message);
+                        // Recharger les tables
+                        await this.loadTables();
+                        this.renderRooms();
+                    } else {
+                        alert('Erreur lors de la migration: ' + result.error);
+                    }
+                } catch (error) {
+                    console.error('Erreur migration:', error);
+                    alert('Erreur lors de la migration');
+                }
+            }
+        });
+
+        // Bouton pour générer tous les QR codes
+        document.getElementById('generateAllQRBtn').addEventListener('click', async () => {
+            if (confirm('Voulez-vous générer les QR codes pour toutes les tables de ce restaurant ?\n\nCela peut prendre quelques instants...')) {
+                try {
+                    // Récupérer l'ID du restaurant actif
+                    const authResponse = await fetch('/api/active-restaurant');
+                    const authData = await authResponse.json();
+                    const restaurantId = authData.restaurantId;
+
+                    if (!restaurantId) {
+                        alert('Aucun restaurant sélectionné');
+                        return;
+                    }
+
+                    const response = await fetch(`/api/restaurants/${restaurantId}/regenerate-qr-codes`, { method: 'POST' });
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert(`QR codes générés avec succès !\n\n${result.message}\nTotal: ${result.total_tables} tables\nMis à jour: ${result.updated}`);
+                        // Recharger les tables pour voir les nouveaux QR codes
+                        await this.loadTables();
+                        this.renderRooms();
+                    } else {
+                        alert('Erreur lors de la génération: ' + result.error);
+                    }
+                } catch (error) {
+                    console.error('Erreur génération QR codes:', error);
+                    alert('Erreur lors de la génération des QR codes');
+                }
+            }
+        });
+
         // Formulaires
         document.getElementById('menuItemForm').addEventListener('submit', (e) => {
             e.preventDefault();
@@ -416,11 +470,17 @@ class RestaurantApp {
     createTableElement(table) {
         const tableDiv = document.createElement('div');
         tableDiv.className = `table-item ${table.status}`;
-        tableDiv.style.left = table.x_position + 'px';
-        tableDiv.style.top = table.y_position + 'px';
+        tableDiv.style.left = (table.x_position || 50) + 'px';
+        tableDiv.style.top = (table.y_position || 50) + 'px';
+
+        const hasQR = table.qr_code ? 'has-qr' : 'no-qr';
+        const qrTitle = table.qr_code ? 'QR Code disponible - Double-clic pour voir' : 'Clic pour générer le QR Code';
+
         tableDiv.innerHTML = `
             ${table.table_number}
-            <div class="table-qr" title="QR Code disponible">QR</div>
+            <div class="table-qr ${hasQR}" title="${qrTitle}">
+                ${table.qr_code ? '📱' : '⚠️'}
+            </div>
             <div class="table-delete" title="Supprimer la table" onclick="app.deleteTable(${table.id})">×</div>
         `;
 
@@ -428,8 +488,18 @@ class RestaurantApp {
         this.makeDraggable(tableDiv, table);
 
         // Clic pour voir le QR code
-        tableDiv.addEventListener('dblclick', () => {
+        tableDiv.addEventListener('dblclick', (e) => {
+            e.preventDefault();
             this.showQRCode(table);
+        });
+
+        // Clic simple pour sélectionner et générer le QR code si nécessaire
+        tableDiv.addEventListener('click', (e) => {
+            if (e.detail === 1) { // Simple clic seulement
+                if (!table.qr_code) {
+                    this.generateQRCodeForTable(table.id);
+                }
+            }
         });
 
         return tableDiv;
@@ -576,19 +646,80 @@ class RestaurantApp {
         }
     }
 
-    showQRCode(table) {
-        if (table.qr_code) {
-            const qrWindow = window.open('', '_blank', 'width=400,height=400');
+    async showQRCode(table) {
+        try {
+            // Si la table n'a pas de QR code, le générer d'abord
+            if (!table.qr_code) {
+                const success = await this.generateQRCodeForTable(table.id);
+                if (!success) {
+                    this.showError('Impossible de générer le QR code');
+                    return;
+                }
+                // Recharger les tables pour obtenir le QR code mis à jour
+                await this.loadTables();
+                // Récupérer la table mise à jour
+                const updatedTable = this.tables.find(t => t.id === table.id);
+                if (updatedTable && updatedTable.qr_code) {
+                    table = updatedTable;
+                } else {
+                    this.showError('QR code non disponible');
+                    return;
+                }
+            }
+
+            // Afficher le QR code dans une nouvelle fenêtre
+            const qrWindow = window.open('', '_blank', 'width=450,height=500');
             qrWindow.document.write(`
                 <html>
-                    <head><title>QR Code - Table ${table.table_number}</title></head>
-                    <body style="text-align:center; padding:20px;">
-                        <h2>Table ${table.table_number}</h2>
-                        <img src="${table.qr_code}" alt="QR Code" style="max-width:300px;">
-                        <p>Scannez ce code pour accéder au menu</p>
+                    <head>
+                        <title>QR Code - Table ${table.table_number}</title>
+                        <style>
+                            body { font-family: Arial, sans-serif; text-align: center; padding: 20px; background: #f8f9fa; }
+                            .container { background: white; padding: 30px; border-radius: 10px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); max-width: 400px; margin: 0 auto; }
+                            .qr-image { max-width: 300px; border: 2px solid #ddd; border-radius: 8px; margin: 20px 0; }
+                            .table-info { color: #333; margin-bottom: 20px; }
+                            .instructions { color: #666; font-size: 14px; margin-top: 15px; line-height: 1.4; }
+                            @media print { body { background: white; } .container { box-shadow: none; } }
+                        </style>
+                    </head>
+                    <body>
+                        <div class="container">
+                            <h2 class="table-info">🍽️ Table ${table.table_number}</h2>
+                            <img src="${table.qr_code}" alt="QR Code" class="qr-image">
+                            <div class="instructions">
+                                <strong>📱 Scannez ce code pour accéder au menu</strong><br>
+                                Les clients peuvent commander directement depuis leur téléphone
+                            </div>
+                            <button onclick="window.print()" style="margin-top: 20px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                🖨️ Imprimer
+                            </button>
+                        </div>
                     </body>
                 </html>
             `);
+        } catch (error) {
+            console.error('Erreur affichage QR code:', error);
+            this.showError('Erreur lors de l\'affichage du QR code');
+        }
+    }
+
+    async generateQRCodeForTable(tableId) {
+        try {
+            const response = await fetch(`/api/tables/${tableId}/generate-qr`, {
+                method: 'POST'
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                this.showSuccess(result.message || 'QR code généré avec succès');
+                return true;
+            } else {
+                throw new Error('Erreur lors de la génération du QR code');
+            }
+        } catch (error) {
+            console.error('Erreur génération QR code:', error);
+            this.showError('Erreur lors de la génération du QR code');
+            return false;
         }
     }
 

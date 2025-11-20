@@ -256,6 +256,9 @@ function getTableQueries() {
         room_id INTEGER NOT NULL,
         capacity INTEGER NOT NULL DEFAULT 4,
         status TEXT DEFAULT 'available' CHECK (status IN ('available', 'occupied', 'reserved', 'maintenance')),
+        qr_code TEXT,
+        x_position INTEGER DEFAULT 50,
+        y_position INTEGER DEFAULT 50,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (room_id) REFERENCES rooms (id),
         UNIQUE(table_number, room_id)
