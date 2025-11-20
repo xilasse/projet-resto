@@ -1103,7 +1103,7 @@ body {
 
 .table-config {
     position: absolute;
-    top: -10px;
+    bottom: -10px;
     left: -10px;
     width: 24px;
     height: 24px;

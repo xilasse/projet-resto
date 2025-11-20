@@ -88,6 +88,96 @@ app.get('/restaurant-selector.html', (req, res) => {
   res.sendFile('restaurant-selector.html', { root: '../client/html' });
 });
 
+// Route de diagnostic pour vérifier l'état de la base de données
+app.get('/api/debug/database-status', requireAuth, async (req, res) => {
+  try {
+    const status = {
+      database_type: isPostgreSQL ? 'PostgreSQL' : 'SQLite',
+      timestamp: new Date().toISOString(),
+      tables: {},
+      statistics: {}
+    };
+
+    // Vérifier les tables principales
+    const tablesToCheck = ['restaurants', 'users', 'user_restaurants', 'menu_items', 'rooms', 'tables', 'orders'];
+
+    for (const tableName of tablesToCheck) {
+      try {
+        const countQuery = isPostgreSQL ?
+          `SELECT COUNT(*) as count FROM ${tableName}` :
+          `SELECT COUNT(*) as count FROM ${tableName}`;
+
+        const result = await get(countQuery);
+        status.tables[tableName] = {
+          exists: true,
+          count: result.count
+        };
+      } catch (error) {
+        status.tables[tableName] = {
+          exists: false,
+          error: error.message
+        };
+      }
+    }
+
+    // Statistiques par restaurant
+    try {
+      const restaurants = await query('SELECT id, name FROM restaurants ORDER BY id');
+      status.statistics.total_restaurants = restaurants.length;
+
+      for (const restaurant of restaurants) {
+        const stats = {
+          menu_items: 0,
+          rooms: 0,
+          tables: 0,
+          orders: 0
+        };
+
+        try {
+          const menuCount = await get('SELECT COUNT(*) as count FROM menu_items WHERE restaurant_id = ?', [restaurant.id]);
+          stats.menu_items = menuCount.count;
+        } catch (e) { stats.menu_items = 'N/A'; }
+
+        try {
+          const roomsCount = await get('SELECT COUNT(*) as count FROM rooms WHERE restaurant_id = ?', [restaurant.id]);
+          stats.rooms = roomsCount.count;
+        } catch (e) { stats.rooms = 'N/A'; }
+
+        try {
+          const tablesCount = await get(`
+            SELECT COUNT(*) as count FROM tables t
+            JOIN rooms r ON t.room_id = r.id
+            WHERE r.restaurant_id = ?
+          `, [restaurant.id]);
+          stats.tables = tablesCount.count;
+        } catch (e) { stats.tables = 'N/A'; }
+
+        try {
+          const ordersCount = await get('SELECT COUNT(*) as count FROM orders WHERE restaurant_id = ?', [restaurant.id]);
+          stats.orders = ordersCount.count;
+        } catch (e) { stats.orders = 'N/A'; }
+
+        status.statistics[`restaurant_${restaurant.id}`] = {
+          name: restaurant.name,
+          ...stats
+        };
+      }
+    } catch (error) {
+      status.statistics.error = error.message;
+    }
+
+    res.json(status);
+
+  } catch (error) {
+    console.error('Erreur diagnostic base:', error);
+    res.status(500).json({
+      error: 'Erreur diagnostic',
+      details: error.message,
+      database_type: isPostgreSQL ? 'PostgreSQL' : 'SQLite'
+    });
+  }
+});
+
 // Route de test pour vérifier le déploiement
 app.get('/api/version', (req, res) => {
   res.json({

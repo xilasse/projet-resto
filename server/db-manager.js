@@ -173,7 +173,35 @@ function getTableQueries() {
         image_url TEXT,
         is_available BOOLEAN DEFAULT true,
         restaurant_id INTEGER NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS rooms (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        color VARCHAR(20) DEFAULT '#e3f2fd',
+        width INTEGER DEFAULT 600,
+        height INTEGER DEFAULT 400,
+        restaurant_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS tables (
+        id SERIAL PRIMARY KEY,
+        table_number VARCHAR(50) NOT NULL,
+        room_id INTEGER NOT NULL,
+        capacity INTEGER NOT NULL DEFAULT 4,
+        status VARCHAR(20) DEFAULT 'available' CHECK (status IN ('available', 'occupied', 'reserved', 'maintenance')),
+        qr_code TEXT,
+        x_position INTEGER DEFAULT 50,
+        y_position INTEGER DEFAULT 50,
+        shape VARCHAR(10) DEFAULT 'round' CHECK (shape IN ('round', 'square')),
+        table_size VARCHAR(10) DEFAULT 'medium' CHECK (table_size IN ('small', 'medium', 'large')),
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (room_id) REFERENCES rooms (id),
+        UNIQUE(table_number, room_id)
       )`,
 
       `CREATE TABLE IF NOT EXISTS orders (
@@ -185,7 +213,9 @@ function getTableQueries() {
         customer_name VARCHAR(255),
         notes TEXT,
         restaurant_id INTEGER NOT NULL,
-        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (table_id) REFERENCES tables (id),
+        FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
       )`
     ];
   } else {

@@ -126,6 +126,49 @@ class RestaurantApp {
             }
         });
 
+        // Bouton de diagnostic de la base de données
+        document.getElementById('diagnoseDatabaseBtn').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/api/debug/database-status');
+                const status = await response.json();
+
+                if (response.ok) {
+                    let message = `🗄️ Diagnostic Base de Données\n\n`;
+                    message += `Type: ${status.database_type}\n`;
+                    message += `Heure: ${new Date(status.timestamp).toLocaleString()}\n\n`;
+
+                    message += `📊 Tables:\n`;
+                    for (const [tableName, tableInfo] of Object.entries(status.tables)) {
+                        if (tableInfo.exists) {
+                            message += `✅ ${tableName}: ${tableInfo.count} enregistrements\n`;
+                        } else {
+                            message += `❌ ${tableName}: MANQUANTE (${tableInfo.error})\n`;
+                        }
+                    }
+
+                    message += `\n🏪 Statistiques par restaurant:\n`;
+                    message += `Total restaurants: ${status.statistics.total_restaurants}\n\n`;
+
+                    for (const [key, stats] of Object.entries(status.statistics)) {
+                        if (key.startsWith('restaurant_')) {
+                            message += `📍 ${stats.name}:\n`;
+                            message += `  • Menu: ${stats.menu_items} plats\n`;
+                            message += `  • Salles: ${stats.rooms}\n`;
+                            message += `  • Tables: ${stats.tables}\n`;
+                            message += `  • Commandes: ${stats.orders}\n\n`;
+                        }
+                    }
+
+                    alert(message);
+                } else {
+                    alert('Erreur lors du diagnostic: ' + status.error);
+                }
+            } catch (error) {
+                console.error('Erreur diagnostic:', error);
+                alert('Erreur lors du diagnostic de la base de données');
+            }
+        });
+
         // Formulaires
         document.getElementById('menuItemForm').addEventListener('submit', (e) => {
             e.preventDefault();
