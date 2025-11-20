@@ -520,6 +520,7 @@ class AuthManager {
         }
 
         this.setupTeamNavigation();
+        this.setupScheduleButtons();
 
         // S'assurer que la vue équipe par défaut est active
         this.switchTeamView('teamListView', 'teamListTab');
@@ -549,6 +550,66 @@ class AuthManager {
                 this.openCreateUserModal();
             });
         }
+    }
+
+    setupScheduleButtons() {
+        // Event listener pour le bouton "Nouveau planning"
+        const addScheduleBtn = document.getElementById('addScheduleBtn');
+        if (addScheduleBtn) {
+            // Supprimer les anciens listeners pour éviter les doublons
+            addScheduleBtn.replaceWith(addScheduleBtn.cloneNode(true));
+            const newAddScheduleBtn = document.getElementById('addScheduleBtn');
+            newAddScheduleBtn.addEventListener('click', () => {
+                this.createNewSchedule();
+            });
+        }
+
+        // Event listener pour le sélecteur de semaine
+        const scheduleWeekSelect = document.getElementById('scheduleWeekSelect');
+        if (scheduleWeekSelect) {
+            scheduleWeekSelect.addEventListener('change', () => {
+                this.loadSchedules();
+            });
+        }
+    }
+
+    createNewSchedule() {
+        // Fonction pour créer un nouveau planning
+        const confirmCreate = confirm(
+            '🗓️ Voulez-vous créer un nouveau planning ?\n\n' +
+            'Cela va:\n' +
+            '• Générer un planning vide pour la semaine\n' +
+            '• Permettre de configurer les horaires de chaque employé\n' +
+            '• Remplacer le planning actuel s\'il existe'
+        );
+
+        if (confirmCreate) {
+            try {
+                // Réinitialiser tous les créneaux
+                this.resetAllScheduleSlots();
+
+                // Afficher un message de succès
+                this.showNotification('✅ Nouveau planning créé ! Vous pouvez maintenant configurer les horaires.', 'success');
+
+                // Recharger l'affichage des plannings
+                this.loadSchedules();
+            } catch (error) {
+                console.error('Erreur création planning:', error);
+                this.showNotification('❌ Erreur lors de la création du planning', 'error');
+            }
+        }
+    }
+
+    resetAllScheduleSlots() {
+        // Fonction pour réinitialiser tous les créneaux de planning
+        const scheduleSlots = document.querySelectorAll('.schedule-slot');
+        scheduleSlots.forEach(slot => {
+            slot.className = 'schedule-slot'; // Reset to default state
+            slot.innerHTML = '<div class="slot-status">Repos</div>';
+            slot.style.backgroundColor = '';
+        });
+
+        console.log('🔄 Tous les créneaux de planning réinitialisés');
     }
 
     switchTeamView(viewId, tabId) {
