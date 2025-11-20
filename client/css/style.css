@@ -1261,6 +1261,64 @@ body {
     border-top: 1px solid #ecf0f1;
 }
 
+/* Modal de création d'utilisateur */
+#newUserModal .modal-content {
+    max-width: 650px;
+    margin: 1% auto;
+    padding: 25px;
+}
+
+#newUserModal .form-actions {
+    position: sticky;
+    bottom: 0;
+    background: white;
+    padding: 20px 0 0 0;
+    margin-top: 20px;
+    border-top: 2px solid #ecf0f1;
+    display: flex;
+    gap: 15px;
+    justify-content: flex-end;
+}
+
+#newUserModal .permission-info {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    margin: 20px 0;
+    max-height: 150px;
+    overflow-y: auto;
+}
+
+#newUserModal .permission-info h4 {
+    margin-bottom: 15px;
+    color: #2c3e50;
+    font-size: 1rem;
+}
+
+#newUserModal .permission-list {
+    font-size: 0.9rem;
+    line-height: 1.6;
+}
+
+#newUserModal .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    margin-bottom: 15px;
+}
+
+@media (max-width: 768px) {
+    #newUserModal .form-row {
+        grid-template-columns: 1fr;
+    }
+
+    #newUserModal .modal-content {
+        margin: 2% auto;
+        width: 95%;
+        max-height: 90vh;
+    }
+}
+
 .table-delete {
     position: absolute;
     top: -10px;
@@ -1369,12 +1427,14 @@ body {
 
 .modal-content {
     background-color: white;
-    margin: 5% auto;
+    margin: 2% auto;
     padding: 20px;
     border-radius: 8px;
     width: 90%;
-    max-width: 500px;
+    max-width: 600px;
     position: relative;
+    max-height: 90vh;
+    overflow-y: auto;
 }
 
 .close {
@@ -1454,7 +1514,8 @@ body {
 
     .modal-content {
         width: 95%;
-        margin: 10% auto;
+        margin: 5% auto;
+        max-height: 85vh;
     }
 }
 
