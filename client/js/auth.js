@@ -1502,6 +1502,22 @@ class AuthManager {
         `;
 
         document.body.appendChild(modal);
+        console.log('✅ Modal planning ajouté au DOM');
+        console.log('📱 Modal HTML créé:', modal.innerHTML.substring(0, 200) + '...');
+
+        // S'assurer que le modal est visible
+        modal.style.display = 'flex';
+        modal.style.position = 'fixed';
+        modal.style.top = '0';
+        modal.style.left = '0';
+        modal.style.width = '100%';
+        modal.style.height = '100%';
+        modal.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+        modal.style.zIndex = '9999';
+        modal.style.justifyContent = 'center';
+        modal.style.alignItems = 'center';
+
+        console.log('🎯 Modal planning affiché avec styles forcés');
     }
 
     toggleScheduleFields(type, modalId = '') {
@@ -1676,6 +1692,12 @@ class AuthManager {
         });
 
         console.log('✅ Event listeners planning configurés:', document.querySelectorAll('.schedule-slot').length, 'slots');
+    }
+
+    // Méthode de test pour modal planning
+    testScheduleModal() {
+        console.log('🧪 Test modal planning...');
+        this.editScheduleSlot(1, 0); // Test avec userId=1, jour=0 (Lundi)
     }
 }
 
