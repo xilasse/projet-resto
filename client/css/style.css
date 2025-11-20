@@ -695,7 +695,7 @@ body {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.3s ease;
-    z-index: 10;
+    z-index: 1000;
 }
 
 .schedule-slot::after {

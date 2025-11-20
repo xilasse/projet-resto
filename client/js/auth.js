@@ -1324,7 +1324,12 @@ class AuthManager {
 
                                     return `
                                     <td class="schedule-day ${isWeekend ? 'weekend' : ''} ${isToday ? 'today' : ''}" data-day="${dayIndex}">
-                                        <div class="schedule-slot" onclick="authManager.editScheduleSlot(${user.id}, ${dayIndex})" title="Cliquer pour modifier le planning de ${day.name} ${day.date}">
+                                        <div class="schedule-slot"
+                                             onclick="authManager.editScheduleSlot(${user.id}, ${dayIndex})"
+                                             data-user-id="${user.id}"
+                                             data-day-index="${dayIndex}"
+                                             title="Cliquer pour modifier le planning de ${day.name} ${day.date}"
+                                             style="cursor: pointer;">
                                             <div class="time-slot">--:-- / --:--</div>
                                             <div class="slot-status">Repos</div>
                                         </div>
@@ -1350,6 +1355,11 @@ class AuthManager {
                 </div>
             </div>
         `;
+
+        // Ajouter des event listeners après la génération du DOM
+        setTimeout(() => {
+            this.setupScheduleClickHandlers();
+        }, 100);
     }
 
     displaySchedulesError(message) {
@@ -1389,10 +1399,26 @@ class AuthManager {
     }
 
     editScheduleSlot(userId, dayIndex) {
+        console.log('🔄 editScheduleSlot appelé:', { userId, dayIndex });
+        console.log('📋 currentTeamData:', this.currentTeamData);
+
         const user = this.currentTeamData?.find(u => u.id === userId);
         const currentWeek = this.getCurrentWeek();
 
-        if (!user || !currentWeek[dayIndex]) return;
+        console.log('👤 User trouvé:', user);
+        console.log('📅 Semaine actuelle:', currentWeek[dayIndex]);
+
+        if (!user) {
+            console.error('❌ Utilisateur non trouvé:', userId);
+            this.showNotification('Erreur: Utilisateur non trouvé', 'error');
+            return;
+        }
+
+        if (!currentWeek[dayIndex]) {
+            console.error('❌ Jour non valide:', dayIndex);
+            this.showNotification('Erreur: Jour non valide', 'error');
+            return;
+        }
 
         // Récupérer les données actuelles du créneau
         const row = document.querySelector(`tr[data-user-id="${userId}"]`);
@@ -1609,6 +1635,39 @@ class AuthManager {
 
     exportSchedule() {
         this.showNotification('Export PDF en cours de développement', 'info');
+    }
+
+    setupScheduleClickHandlers() {
+        console.log('🔧 Configuration des event listeners pour le planning...');
+
+        // Supprimer les anciens listeners pour éviter les doublons
+        document.querySelectorAll('.schedule-slot').forEach(slot => {
+            slot.removeEventListener('click', this.handleScheduleSlotClick);
+        });
+
+        // Ajouter les nouveaux listeners
+        document.querySelectorAll('.schedule-slot').forEach(slot => {
+            slot.addEventListener('click', (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+
+                // Récupérer userId et dayIndex depuis les data attributes
+                const row = slot.closest('tr[data-user-id]');
+                const cell = slot.closest('td[data-day]');
+
+                if (row && cell) {
+                    const userId = parseInt(row.dataset.userId);
+                    const dayIndex = parseInt(cell.dataset.day);
+
+                    console.log('🖱️ Clic détecté sur schedule slot:', { userId, dayIndex });
+                    this.editScheduleSlot(userId, dayIndex);
+                } else {
+                    console.error('❌ Impossible de récupérer userId ou dayIndex');
+                }
+            });
+        });
+
+        console.log('✅ Event listeners planning configurés:', document.querySelectorAll('.schedule-slot').length, 'slots');
     }
 }
 
