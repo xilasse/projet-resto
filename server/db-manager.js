@@ -1,12 +1,13 @@
-// Gestionnaire de base de données adaptatif pour SQLite et PostgreSQL
-const sqlite3 = require('sqlite3').verbose();
+// Gestionnaire de base de données PostgreSQL SEULEMENT
 const bcrypt = require('bcryptjs');
+const { Client } = require('pg');
 
 let db;
-let isPostgreSQL = false;
+const isPostgreSQL = true; // POSTGRESQL SEULEMENT
 
-// Debug des variables d'environnement
-console.log('🔍 DIAGNOSTIC ENVIRONNEMENT:');
+// Configuration PostgreSQL FORCÉE
+console.log('🔧 POSTGRESQL SEULEMENT - SQLite supprimé !');
+console.log('📊 Variables d\'environnement PostgreSQL:');
 console.log('- DATABASE_URL:', process.env.DATABASE_URL ? '[DÉFINIE]' : '[NON DÉFINIE]');
 console.log('- PGHOST:', process.env.PGHOST || '[NON DÉFINIE]');
 console.log('- PGUSER:', process.env.PGUSER || '[NON DÉFINIE]');
@@ -14,183 +15,56 @@ console.log('- PGDATABASE:', process.env.PGDATABASE || '[NON DÉFINIE]');
 console.log('- NODE_ENV:', process.env.NODE_ENV || '[NON DÉFINIE]');
 console.log('- PORT:', process.env.PORT || '[NON DÉFINIE]');
 
-// Vérification améliorée pour détecter Railway et forcer PostgreSQL
-const isRailway = process.env.RAILWAY_ENVIRONMENT ||
-                  process.env.RAILWAY_PROJECT_ID ||
-                  process.env.RAILWAY_PROJECT_NAME ||
-                  process.env.RAILWAY_SERVICE_NAME ||
-                  process.env.RAILWAY_ENVIRONMENT_NAME ||
-                  (process.env.PORT && process.env.NODE_ENV === 'production') ||
-                  process.env.PORT === '8080'; // Railway utilise souvent le port 8080
+// Configuration de connexion PostgreSQL
+let connectionConfig;
 
-const hasPostgresConfig = process.env.DATABASE_URL || process.env.PGHOST || process.env.PGUSER;
-
-// FORCER PostgreSQL en production même sans config parfaite
-const forcePostgreSQL = process.env.NODE_ENV === 'production' || isRailway;
-
-// Diagnostic détaillé
-console.log('🔍 DIAGNOSTIC COMPLET ENVIRONNEMENT:');
-console.log('- Railway détecté:', !!isRailway);
-console.log('- NODE_ENV:', process.env.NODE_ENV || '[NON DÉFINIE]');
-console.log('- RAILWAY_ENVIRONMENT:', process.env.RAILWAY_ENVIRONMENT || '[NON DÉFINIE]');
-console.log('- PostgreSQL configuré:', !!hasPostgresConfig);
-console.log('- Force PostgreSQL:', !!forcePostgreSQL);
-
-// Vérification critique pour la production
-if ((process.env.NODE_ENV === 'production' || isRailway) && !hasPostgresConfig) {
-  console.error('❌ ERREUR CRITIQUE: Environnement de production/Railway détecté mais aucune base PostgreSQL configurée !');
-  console.error('');
-  console.error('🔧 SOLUTION POUR RAILWAY:');
-  console.error('   1. Allez dans Railway Dashboard');
-  console.error('   2. SUPPRIMEZ le service PostgreSQL actuel (problème de volume mount)');
-  console.error('   3. Ajoutez un NOUVEAU service PostgreSQL:');
-  console.error('      - Cliquez "Add Service" → "Database" → "PostgreSQL"');
-  console.error('   4. Railway créera automatiquement DATABASE_URL');
-  console.error('   5. Redéployez l\'application');
-  console.error('');
-  console.error('⚠️ PROBLÈME DÉTECTÉ: Volume mount PostgreSQL en double');
-  console.error('🚨 LES DONNÉES SERONT PERDUES À CHAQUE REDÉPLOIEMENT !');
-}
-
-// Forcer PostgreSQL sur Railway même si DATABASE_URL n'est pas définie
-if (isRailway && !hasPostgresConfig) {
-  console.warn('⚠️ RAILWAY DÉTECTÉ SANS POSTGRESQL - Tentative de configuration automatique...');
-  // Railway devrait automatiquement fournir DATABASE_URL quand PostgreSQL est ajouté
-}
-
-// FORCER PostgreSQL en production ou si on a la configuration
-if (hasPostgresConfig || forcePostgreSQL) {
-  // Production - PostgreSQL sur Railway
-  console.log('🔄 Connexion à PostgreSQL sur Railway...');
-  console.log('📊 Configuration PostgreSQL détectée');
-  const { Client } = require('pg');
-
-  // Configuration de connexion intelligente pour Railway
-  let connectionConfig;
-
-  if (process.env.DATABASE_URL) {
-    // Utiliser DATABASE_URL si disponible (recommandé Railway)
-    connectionConfig = {
-      connectionString: process.env.DATABASE_URL,
-      ssl: isRailway ? { rejectUnauthorized: false } : false
-    };
-    console.log('📡 Utilisation DATABASE_URL pour PostgreSQL');
-  } else if (forcePostgreSQL && isRailway) {
-    // Configuration par défaut Railway PostgreSQL
-    console.warn('⚠️ FORCE PostgreSQL sur Railway sans DATABASE_URL');
-    connectionConfig = {
-      host: process.env.PGHOST || 'postgres.railway.internal',
-      port: process.env.PGPORT || 5432,
-      database: process.env.PGDATABASE || 'railway',
-      user: process.env.PGUSER || 'postgres',
-      password: process.env.PGPASSWORD || '',
-      ssl: { rejectUnauthorized: false }
-    };
-    console.log('🔧 Configuration PostgreSQL Railway par défaut');
-  } else {
-    // Configuration par variables individuelles (fallback)
-    connectionConfig = {
-      host: process.env.PGHOST || 'localhost',
-      port: process.env.PGPORT || 5432,
-      database: process.env.PGDATABASE || 'railway',
-      user: process.env.PGUSER || 'postgres',
-      password: process.env.PGPASSWORD || '',
-      ssl: isRailway ? { rejectUnauthorized: false } : false
-    };
-    console.log('🔧 Utilisation variables PostgreSQL individuelles');
-  }
-
-  const client = new Client(connectionConfig);
-
-  client.connect()
-    .then(() => {
-      console.log('✅ Connecté à PostgreSQL');
-      console.log('🎉 DONNÉES PERSISTANTES - Redéploiements sans perte !');
-      initializeDatabase();
-    })
-    .catch(err => {
-      console.error('❌ Erreur PostgreSQL:', err);
-
-      // Sur Railway, en cas d'erreur PostgreSQL, donner instructions et continuer avec SQLite
-      if (isRailway) {
-        console.error('🚨 ERREUR CRITIQUE: Railway détecté mais échec connexion PostgreSQL !');
-        console.error('💡 Le service PostgreSQL n\'est pas correctement configuré sur Railway');
-        console.error('📋 INSTRUCTIONS POUR RÉPARER:');
-        console.error('   1. Allez dans Railway Dashboard');
-        console.error('   2. Cliquez sur votre projet restaurant');
-        console.error('   3. Cliquez "Add Service" → "Database" → "PostgreSQL"');
-        console.error('   4. Une fois créé, cliquez sur le service PostgreSQL');
-        console.error('   5. Allez dans "Connect" → copiez la "Postgres Connection URL"');
-        console.error('   6. Dans Variables, ajoutez DATABASE_URL avec cette URL');
-        console.error('   7. Redéployez l\'application');
-        console.error('');
-        console.error('⚠️ ATTENTION: Utilisation temporaire de SQLite - DONNÉES PERDUES AU REDÉPLOIEMENT!');
-        console.error('🔄 Basculement vers SQLite pour maintenir l\'app fonctionnelle...');
-
-        // Continuer avec SQLite plutôt que crash
-        db = new (require('sqlite3').verbose()).Database(':memory:', (err) => {
-          if (err) {
-            console.error('❌ Erreur SQLite fallback:', err);
-            process.exit(1);
-          } else {
-            console.log('✅ SQLite temporaire connecté (mémoire)');
-            console.log('🚨 RÉPAREZ POSTGRESQL RAPIDEMENT - DONNÉES TEMPORAIRES !');
-            initializeDatabase();
-          }
-        });
-        isPostgreSQL = false;
-        return; // Important: sortir de cette branche
-      }
-    });
-
-  db = client;
-  isPostgreSQL = true;
-
+if (process.env.DATABASE_URL) {
+  // Utiliser DATABASE_URL (recommandé Railway)
+  connectionConfig = {
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  };
+  console.log('📡 Utilisation DATABASE_URL pour PostgreSQL');
 } else {
-  // Pas de configuration PostgreSQL
-  if (isRailway) {
-    // Railway sans PostgreSQL configuré
-    console.log('🔄 Railway détecté mais PostgreSQL non configuré...');
-    console.error('🚨 CONFIGURATION POSTGRESQL MANQUANTE SUR RAILWAY !');
-    console.error('📋 ÉTAPES POUR CONFIGURER POSTGRESQL:');
-    console.error('   1. Ouvrez Railway Dashboard (https://railway.app)');
-    console.error('   2. Sélectionnez votre projet restaurant');
-    console.error('   3. Cliquez "+ Add Service" ou "New"');
-    console.error('   4. Choisissez "Database" puis "PostgreSQL"');
-    console.error('   5. Railway créera automatiquement DATABASE_URL');
-    console.error('   6. Redéployez l\'application');
-    console.error('');
-    console.error('⚠️ UTILISATION TEMPORAIRE DE SQLITE EN MÉMOIRE');
-    console.error('🚨 TOUTES LES DONNÉES SERONT PERDUES AU REDÉPLOIEMENT !');
-
-    // SQLite en mémoire pour Railway sans PostgreSQL
-    db = new sqlite3.Database(':memory:', (err) => {
-      if (err) {
-        console.error('❌ Erreur SQLite mémoire:', err);
-      } else {
-        console.log('✅ SQLite temporaire connecté (mémoire)');
-        console.log('🔄 Application fonctionnelle mais DONNÉES TEMPORAIRES');
-        initializeDatabase();
-      }
-    });
-  } else {
-    // Développement local - SQLite normal
-    console.log('🔄 Connexion à SQLite local...');
-    console.log('⚠️ ATTENTION: Utilisation de SQLite - les données seront perdues au redéploiement !');
-    console.log('💡 Pour utiliser PostgreSQL, définissez DATABASE_URL dans les variables d\'environnement');
-
-    db = new sqlite3.Database('./restaurant.db', (err) => {
-      if (err) {
-        console.error('❌ Erreur SQLite:', err);
-      } else {
-        console.log('✅ Connecté à SQLite');
-        console.log('📁 Fichier de base: ./restaurant.db');
-        initializeDatabase();
-      }
-    });
-  }
-  isPostgreSQL = false;
+  // Configuration par variables individuelles
+  connectionConfig = {
+    host: process.env.PGHOST || 'localhost',
+    port: process.env.PGPORT || 5432,
+    database: process.env.PGDATABASE || 'postgres',
+    user: process.env.PGUSER || 'postgres',
+    password: process.env.PGPASSWORD || '',
+    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+  };
+  console.log('🔧 Utilisation variables PostgreSQL individuelles');
+  console.log('⚠️ Si échec: configurez DATABASE_URL sur Railway !');
 }
+
+const client = new Client(connectionConfig);
+
+console.log('🔄 Connexion à PostgreSQL...');
+
+client.connect()
+  .then(() => {
+    console.log('✅ Connecté à PostgreSQL');
+    console.log('🎉 DONNÉES PERSISTANTES GARANTIES !');
+    initializeDatabase();
+  })
+  .catch(err => {
+    console.error('❌ ERREUR CRITIQUE PostgreSQL:', err);
+    console.error('');
+    console.error('🚨 IMPOSSIBLE DE CONTINUER SANS POSTGRESQL !');
+    console.error('📋 SOLUTION URGENTE:');
+    console.error('   1. Railway Dashboard → Votre projet');
+    console.error('   2. Add Service → Database → PostgreSQL');
+    console.error('   3. Copiez DATABASE_URL depuis Connect tab');
+    console.error('   4. Ajoutez DATABASE_URL dans Variables');
+    console.error('   5. Redéployez');
+    console.error('');
+    console.error('💀 APPLICATION ARRÊTÉE - PostgreSQL requis !');
+    process.exit(1);
+  });
+
+db = client;
 
 // Fonction pour exécuter des requêtes de manière unifiée
 function query(sql, params = []) {
