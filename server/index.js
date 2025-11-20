@@ -807,8 +807,8 @@ app.post('/api/tables', requireAuth, async (req, res) => {
     // Créer la table
     console.log('💾 Tentative création table...');
     const result = await run(
-      'INSERT INTO tables (table_number, room_id, capacity, status, x_position, y_position) VALUES (?, ?, ?, ?, ?, ?)',
-      [finalTableNumber, finalRoomId, finalCapacity, 'available', 50, 50]
+      'INSERT INTO tables (table_number, room_id, capacity, status, x_position, y_position, shape, table_size) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+      [finalTableNumber, finalRoomId, finalCapacity, 'available', 50, 50, 'round', 'medium']
     );
 
     const tableId = result.lastID;
@@ -839,6 +839,79 @@ app.post('/api/tables', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('Erreur création table:', error);
     res.status(500).json({ error: 'Erreur lors de la création de la table' });
+  }
+});
+
+// Route pour mettre à jour l'apparence d'une table (forme et taille)
+app.put('/api/tables/:id/appearance', requireAuth, async (req, res) => {
+  try {
+    const tableId = req.params.id;
+    const { shape, table_size } = req.body;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    // Valider les paramètres
+    const validShapes = ['round', 'square'];
+    const validSizes = ['small', 'medium', 'large'];
+
+    if (shape && !validShapes.includes(shape)) {
+      return res.status(400).json({ error: 'Forme invalide. Doit être: round ou square' });
+    }
+
+    if (table_size && !validSizes.includes(table_size)) {
+      return res.status(400).json({ error: 'Taille invalide. Doit être: small, medium ou large' });
+    }
+
+    // Vérifier que la table appartient à une salle du restaurant actif
+    const existingTable = await get(`
+      SELECT t.*, r.restaurant_id
+      FROM tables t
+      JOIN rooms r ON t.room_id = r.id
+      WHERE t.id = ? AND r.restaurant_id = ?
+    `, [tableId, activeRestaurantId]);
+
+    if (!existingTable) {
+      return res.status(404).json({ error: 'Table non trouvée' });
+    }
+
+    // Construire la requête de mise à jour
+    const updates = [];
+    const params = [];
+
+    if (shape) {
+      updates.push('shape = ?');
+      params.push(shape);
+    }
+
+    if (table_size) {
+      updates.push('table_size = ?');
+      params.push(table_size);
+    }
+
+    if (updates.length === 0) {
+      return res.status(400).json({ error: 'Aucun paramètre à mettre à jour' });
+    }
+
+    params.push(tableId);
+
+    // Mettre à jour l'apparence
+    await run(
+      `UPDATE tables SET ${updates.join(', ')} WHERE id = ?`,
+      params
+    );
+
+    res.json({
+      success: true,
+      message: 'Apparence de la table mise à jour avec succès',
+      updated: { shape, table_size }
+    });
+
+  } catch (error) {
+    console.error('Erreur mise à jour apparence table:', error);
+    res.status(500).json({ error: 'Erreur lors de la mise à jour de l\'apparence' });
   }
 });
 
@@ -1162,6 +1235,8 @@ app.post('/api/debug/migrate-tables', requireAuth, async (req, res) => {
         await run('ALTER TABLE tables ADD COLUMN IF NOT EXISTS qr_code TEXT');
         await run('ALTER TABLE tables ADD COLUMN IF NOT EXISTS x_position INTEGER DEFAULT 50');
         await run('ALTER TABLE tables ADD COLUMN IF NOT EXISTS y_position INTEGER DEFAULT 50');
+        await run("ALTER TABLE tables ADD COLUMN IF NOT EXISTS shape TEXT DEFAULT 'round'");
+        await run("ALTER TABLE tables ADD COLUMN IF NOT EXISTS table_size TEXT DEFAULT 'medium'");
         console.log('✅ Colonnes PostgreSQL ajoutées');
       } catch (error) {
         console.log('⚠️ Colonnes déjà existantes ou erreur:', error.message);
@@ -1184,6 +1259,16 @@ app.post('/api/debug/migrate-tables', requireAuth, async (req, res) => {
       if (!columnNames.includes('y_position')) {
         await run('ALTER TABLE tables ADD COLUMN y_position INTEGER DEFAULT 50');
         console.log('✅ Colonne y_position ajoutée');
+      }
+
+      if (!columnNames.includes('shape')) {
+        await run("ALTER TABLE tables ADD COLUMN shape TEXT DEFAULT 'round'");
+        console.log('✅ Colonne shape ajoutée');
+      }
+
+      if (!columnNames.includes('table_size')) {
+        await run("ALTER TABLE tables ADD COLUMN table_size TEXT DEFAULT 'medium'");
+        console.log('✅ Colonne table_size ajoutée');
       }
     }
 

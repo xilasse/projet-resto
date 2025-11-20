@@ -469,7 +469,12 @@ class RestaurantApp {
 
     createTableElement(table) {
         const tableDiv = document.createElement('div');
-        tableDiv.className = `table-item ${table.status}`;
+
+        // Classes CSS pour la forme, taille et statut
+        const shapeClass = table.shape || 'round';
+        const sizeClass = table.table_size || 'medium';
+        tableDiv.className = `table-item ${table.status} ${shapeClass} ${sizeClass}`;
+
         tableDiv.style.left = (table.x_position || 50) + 'px';
         tableDiv.style.top = (table.y_position || 50) + 'px';
 
@@ -478,10 +483,11 @@ class RestaurantApp {
 
         tableDiv.innerHTML = `
             ${table.table_number}
+            <div class="table-config" title="Configurer l'apparence" onclick="app.openTableAppearanceModal(${table.id}); event.stopPropagation();">⚙️</div>
             <div class="table-qr ${hasQR}" title="${qrTitle}">
                 ${table.qr_code ? '📱' : '⚠️'}
             </div>
-            <div class="table-delete" title="Supprimer la table" onclick="app.deleteTable(${table.id})">×</div>
+            <div class="table-delete" title="Supprimer la table" onclick="app.deleteTable(${table.id}); event.stopPropagation();">×</div>
         `;
 
         // Rendre la table déplaçable
@@ -1427,11 +1433,119 @@ class RestaurantApp {
         document.getElementById('editRoomForm').reset();
     }
 
+    // Gestion du modal d'apparence des tables
+    openTableAppearanceModal(tableId) {
+        this.selectedTableId = tableId;
+        const table = this.tables.find(t => t.id === tableId);
+
+        if (!table) {
+            this.showError('Table non trouvée');
+            return;
+        }
+
+        const modal = document.getElementById('tableAppearanceModal');
+
+        // Réinitialiser les sélections
+        document.querySelectorAll('.shape-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+        document.querySelectorAll('.size-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+
+        // Sélectionner la forme actuelle
+        const currentShape = table.shape || 'round';
+        const shapeOption = document.querySelector(`[data-shape="${currentShape}"]`);
+        if (shapeOption) {
+            shapeOption.classList.add('selected');
+        }
+
+        // Sélectionner la taille actuelle
+        const currentSize = table.table_size || 'medium';
+        const sizeOption = document.querySelector(`[data-size="${currentSize}"]`);
+        if (sizeOption) {
+            sizeOption.classList.add('selected');
+        }
+
+        // Ajouter les gestionnaires d'événements
+        document.querySelectorAll('.shape-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.shape-option').forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+            });
+        });
+
+        document.querySelectorAll('.size-option').forEach(option => {
+            option.addEventListener('click', () => {
+                document.querySelectorAll('.size-option').forEach(opt => opt.classList.remove('selected'));
+                option.classList.add('selected');
+            });
+        });
+
+        modal.style.display = 'block';
+    }
+
+    closeTableAppearanceModal() {
+        document.getElementById('tableAppearanceModal').style.display = 'none';
+        this.selectedTableId = null;
+    }
+
+    async saveTableAppearance() {
+        if (!this.selectedTableId) {
+            this.showError('Aucune table sélectionnée');
+            return;
+        }
+
+        const selectedShape = document.querySelector('.shape-option.selected')?.dataset.shape;
+        const selectedSize = document.querySelector('.size-option.selected')?.dataset.size;
+
+        if (!selectedShape || !selectedSize) {
+            this.showError('Veuillez sélectionner une forme et une taille');
+            return;
+        }
+
+        try {
+            const response = await fetch(`/api/tables/${this.selectedTableId}/appearance`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    shape: selectedShape,
+                    table_size: selectedSize
+                })
+            });
+
+            if (response.ok) {
+                const result = await response.json();
+                this.showSuccess('Apparence de la table mise à jour');
+                this.closeTableAppearanceModal();
+
+                // Mettre à jour la table localement
+                const tableIndex = this.tables.findIndex(t => t.id == this.selectedTableId);
+                if (tableIndex !== -1) {
+                    this.tables[tableIndex].shape = selectedShape;
+                    this.tables[tableIndex].table_size = selectedSize;
+                }
+
+                // Recharger l'affichage des salles
+                this.renderRooms();
+            } else {
+                const error = await response.json();
+                throw new Error(error.error || 'Erreur lors de la mise à jour');
+            }
+        } catch (error) {
+            console.error('Erreur sauvegarde apparence:', error);
+            this.showError('Erreur lors de la sauvegarde de l\'apparence');
+        }
+    }
+
     // Utilitaires
     closeModals() {
         document.querySelectorAll('.modal').forEach(modal => {
             modal.style.display = 'none';
         });
+        this.closeTableAppearanceModal();
     }
 
     showSuccess(message) {

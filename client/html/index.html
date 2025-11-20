@@ -547,6 +547,53 @@
         </div>
     </div>
 
+    <!-- Modal pour configurer l'apparence d'une table -->
+    <div id="tableAppearanceModal" class="table-appearance-modal">
+        <div class="table-appearance-content">
+            <div class="appearance-header">
+                <h3>⚙️ Configuration de la table</h3>
+                <span class="close" onclick="app.closeTableAppearanceModal()">&times;</span>
+            </div>
+
+            <div class="appearance-section">
+                <h4>🔳 Forme de la table</h4>
+                <div class="shape-options">
+                    <div class="shape-option" data-shape="round">
+                        <div class="shape-preview round">T</div>
+                        <div>Ronde</div>
+                    </div>
+                    <div class="shape-option" data-shape="square">
+                        <div class="shape-preview square">T</div>
+                        <div>Carrée</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="appearance-section">
+                <h4>📏 Taille de la table</h4>
+                <div class="size-options">
+                    <div class="size-option" data-size="small">
+                        <div class="size-preview small">S</div>
+                        <div>Petite</div>
+                    </div>
+                    <div class="size-option" data-size="medium">
+                        <div class="size-preview medium">M</div>
+                        <div>Moyenne</div>
+                    </div>
+                    <div class="size-option" data-size="large">
+                        <div class="size-preview large">L</div>
+                        <div>Grande</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="appearance-actions">
+                <button class="btn btn-secondary" onclick="app.closeTableAppearanceModal()">Annuler</button>
+                <button class="btn btn-primary" onclick="app.saveTableAppearance()">Sauvegarder</button>
+            </div>
+        </div>
+    </div>
+
     <script src="/js/auth.js?v=2.0"></script>
     <script src="/js/app.js?v=2.0"></script>
 </body>

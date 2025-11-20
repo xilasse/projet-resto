@@ -259,6 +259,8 @@ function getTableQueries() {
         qr_code TEXT,
         x_position INTEGER DEFAULT 50,
         y_position INTEGER DEFAULT 50,
+        shape TEXT DEFAULT 'round' CHECK (shape IN ('round', 'square')),
+        table_size TEXT DEFAULT 'medium' CHECK (table_size IN ('small', 'medium', 'large')),
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (room_id) REFERENCES rooms (id),
         UNIQUE(table_number, room_id)
