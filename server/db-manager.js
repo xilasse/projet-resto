@@ -45,8 +45,8 @@ if (isRailway && !hasPostgresConfig) {
   // Railway devrait automatiquement fournir DATABASE_URL quand PostgreSQL est ajouté
 }
 
-// Forcer PostgreSQL si Railway est détecté (même sans variables d'env parfaites)
-if (hasPostgresConfig || isRailway) {
+// Utiliser PostgreSQL SI on a la configuration OU si Railway avec DATABASE_URL
+if (hasPostgresConfig) {
   // Production - PostgreSQL sur Railway
   console.log('🔄 Connexion à PostgreSQL sur Railway...');
   console.log('📊 Configuration PostgreSQL détectée');
@@ -86,12 +86,35 @@ if (hasPostgresConfig || isRailway) {
     .catch(err => {
       console.error('❌ Erreur PostgreSQL:', err);
 
-      // Sur Railway, en cas d'erreur PostgreSQL, ne pas fallback vers SQLite
+      // Sur Railway, en cas d'erreur PostgreSQL, donner instructions et continuer avec SQLite
       if (isRailway) {
         console.error('🚨 ERREUR CRITIQUE: Railway détecté mais échec connexion PostgreSQL !');
-        console.error('💡 Vérifiez que le service PostgreSQL est bien ajouté dans Railway Dashboard');
-        console.error('🔗 Variables d\'environnement disponibles:', Object.keys(process.env).filter(k => k.includes('PG') || k.includes('DATABASE')));
-        process.exit(1); // Arrêter l'app plutôt que d'utiliser SQLite
+        console.error('💡 Le service PostgreSQL n\'est pas correctement configuré sur Railway');
+        console.error('📋 INSTRUCTIONS POUR RÉPARER:');
+        console.error('   1. Allez dans Railway Dashboard');
+        console.error('   2. Cliquez sur votre projet restaurant');
+        console.error('   3. Cliquez "Add Service" → "Database" → "PostgreSQL"');
+        console.error('   4. Une fois créé, cliquez sur le service PostgreSQL');
+        console.error('   5. Allez dans "Connect" → copiez la "Postgres Connection URL"');
+        console.error('   6. Dans Variables, ajoutez DATABASE_URL avec cette URL');
+        console.error('   7. Redéployez l\'application');
+        console.error('');
+        console.error('⚠️ ATTENTION: Utilisation temporaire de SQLite - DONNÉES PERDUES AU REDÉPLOIEMENT!');
+        console.error('🔄 Basculement vers SQLite pour maintenir l\'app fonctionnelle...');
+
+        // Continuer avec SQLite plutôt que crash
+        db = new (require('sqlite3').verbose()).Database(':memory:', (err) => {
+          if (err) {
+            console.error('❌ Erreur SQLite fallback:', err);
+            process.exit(1);
+          } else {
+            console.log('✅ SQLite temporaire connecté (mémoire)');
+            console.log('🚨 RÉPAREZ POSTGRESQL RAPIDEMENT - DONNÉES TEMPORAIRES !');
+            initializeDatabase();
+          }
+        });
+        isPostgreSQL = false;
+        return; // Important: sortir de cette branche
       }
     });
 
@@ -99,20 +122,48 @@ if (hasPostgresConfig || isRailway) {
   isPostgreSQL = true;
 
 } else {
-  // Développement - SQLite local
-  console.log('🔄 Connexion à SQLite local...');
-  console.log('⚠️  ATTENTION: Utilisation de SQLite - les données seront perdues au redéploiement !');
-  console.log('💡 Pour utiliser PostgreSQL, définissez DATABASE_URL ou PGHOST dans les variables d\'environnement');
+  // Pas de configuration PostgreSQL
+  if (isRailway) {
+    // Railway sans PostgreSQL configuré
+    console.log('🔄 Railway détecté mais PostgreSQL non configuré...');
+    console.error('🚨 CONFIGURATION POSTGRESQL MANQUANTE SUR RAILWAY !');
+    console.error('📋 ÉTAPES POUR CONFIGURER POSTGRESQL:');
+    console.error('   1. Ouvrez Railway Dashboard (https://railway.app)');
+    console.error('   2. Sélectionnez votre projet restaurant');
+    console.error('   3. Cliquez "+ Add Service" ou "New"');
+    console.error('   4. Choisissez "Database" puis "PostgreSQL"');
+    console.error('   5. Railway créera automatiquement DATABASE_URL');
+    console.error('   6. Redéployez l\'application');
+    console.error('');
+    console.error('⚠️ UTILISATION TEMPORAIRE DE SQLITE EN MÉMOIRE');
+    console.error('🚨 TOUTES LES DONNÉES SERONT PERDUES AU REDÉPLOIEMENT !');
 
-  db = new sqlite3.Database('./restaurant.db', (err) => {
-    if (err) {
-      console.error('❌ Erreur SQLite:', err);
-    } else {
-      console.log('✅ Connecté à SQLite');
-      console.log('📁 Fichier de base: ./restaurant.db');
-      initializeDatabase();
-    }
-  });
+    // SQLite en mémoire pour Railway sans PostgreSQL
+    db = new sqlite3.Database(':memory:', (err) => {
+      if (err) {
+        console.error('❌ Erreur SQLite mémoire:', err);
+      } else {
+        console.log('✅ SQLite temporaire connecté (mémoire)');
+        console.log('🔄 Application fonctionnelle mais DONNÉES TEMPORAIRES');
+        initializeDatabase();
+      }
+    });
+  } else {
+    // Développement local - SQLite normal
+    console.log('🔄 Connexion à SQLite local...');
+    console.log('⚠️ ATTENTION: Utilisation de SQLite - les données seront perdues au redéploiement !');
+    console.log('💡 Pour utiliser PostgreSQL, définissez DATABASE_URL dans les variables d\'environnement');
+
+    db = new sqlite3.Database('./restaurant.db', (err) => {
+      if (err) {
+        console.error('❌ Erreur SQLite:', err);
+      } else {
+        console.log('✅ Connecté à SQLite');
+        console.log('📁 Fichier de base: ./restaurant.db');
+        initializeDatabase();
+      }
+    });
+  }
   isPostgreSQL = false;
 }
 
