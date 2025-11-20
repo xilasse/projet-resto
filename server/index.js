@@ -103,11 +103,16 @@ app.get('/api/version', (req, res) => {
 
 // Route pour diagnostiquer l'environnement (sans auth pour debugging)
 app.get('/api/debug/environment', (req, res) => {
+  const isRailway = process.env.RAILWAY_ENVIRONMENT || process.env.RAILWAY_PROJECT_ID || process.env.PORT;
+
   const envInfo = {
     database_type: isPostgreSQL ? 'PostgreSQL' : 'SQLite',
+    deployment_platform: isRailway ? 'Railway' : 'Local',
     environment: {
       NODE_ENV: process.env.NODE_ENV || 'undefined',
       PORT: process.env.PORT || 'undefined',
+      RAILWAY_ENVIRONMENT: process.env.RAILWAY_ENVIRONMENT || '[NON DÉFINIE]',
+      RAILWAY_PROJECT_ID: process.env.RAILWAY_PROJECT_ID ? '[DÉFINIE]' : '[NON DÉFINIE]',
       DATABASE_URL: process.env.DATABASE_URL ? '[DÉFINIE]' : '[NON DÉFINIE]',
       PGHOST: process.env.PGHOST || '[NON DÉFINIE]',
       PGUSER: process.env.PGUSER || '[NON DÉFINIE]',
@@ -118,7 +123,8 @@ app.get('/api/debug/environment', (req, res) => {
     platform: process.platform,
     node_version: process.version,
     timestamp: new Date().toISOString(),
-    warning: isPostgreSQL ? null : '⚠️ UTILISE SQLITE - DONNÉES PERDUES AU REDÉPLOIEMENT!'
+    critical_warning: isPostgreSQL ? null : '🚨 UTILISE SQLITE - DONNÉES PERDUES AU REDÉPLOIEMENT!',
+    solution: !isPostgreSQL && isRailway ? 'Ajoutez le service PostgreSQL dans Railway Dashboard' : null
   };
 
   console.log('🔍 Diagnostic environnement demandé:', envInfo);
