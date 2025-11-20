@@ -1543,11 +1543,121 @@ app.delete('/api/rooms/:id', requireAuth, async (req, res) => {
 
 app.get('/api/ingredients', requireAuth, async (req, res) => {
   try {
-    const ingredients = await query('SELECT * FROM ingredients ORDER BY name');
+    const activeRestaurantId = req.session.activeRestaurantId;
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    const ingredients = await query('SELECT * FROM ingredients WHERE restaurant_id = ? ORDER BY name', [activeRestaurantId]);
     res.json(ingredients);
   } catch (error) {
     console.error('Erreur ingredients:', error);
     res.json([]);
+  }
+});
+
+// Route pour créer un nouvel ingrédient
+app.post('/api/ingredients', requireAuth, async (req, res) => {
+  try {
+    const activeRestaurantId = req.session.activeRestaurantId;
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    const { name, unit, stock_quantity, min_quantity, cost_per_unit, supplier } = req.body;
+
+    if (!name || !unit) {
+      return res.status(400).json({ error: 'Nom et unité sont obligatoires' });
+    }
+
+    const result = await run(
+      'INSERT INTO ingredients (name, unit, stock_quantity, min_quantity, cost_per_unit, supplier, restaurant_id) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [name, unit, stock_quantity || 0, min_quantity || 0, cost_per_unit || 0, supplier || null, activeRestaurantId]
+    );
+
+    res.json({
+      success: true,
+      id: result.lastID,
+      message: 'Ingrédient ajouté avec succès'
+    });
+
+  } catch (error) {
+    console.error('Erreur création ingrédient:', error);
+    res.status(500).json({ error: 'Erreur lors de la création de l\'ingrédient' });
+  }
+});
+
+// Route pour modifier un ingrédient
+app.put('/api/ingredients/:id', requireAuth, async (req, res) => {
+  try {
+    const ingredientId = req.params.id;
+    const activeRestaurantId = req.session.activeRestaurantId;
+    const { name, unit, stock_quantity, min_quantity, cost_per_unit, supplier } = req.body;
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    if (!name || !unit) {
+      return res.status(400).json({ error: 'Nom et unité sont obligatoires' });
+    }
+
+    // Vérifier que l'ingrédient appartient au restaurant
+    const existingIngredient = await get(
+      'SELECT id FROM ingredients WHERE id = ? AND restaurant_id = ?',
+      [ingredientId, activeRestaurantId]
+    );
+
+    if (!existingIngredient) {
+      return res.status(404).json({ error: 'Ingrédient non trouvé' });
+    }
+
+    await run(
+      'UPDATE ingredients SET name = ?, unit = ?, stock_quantity = ?, min_quantity = ?, cost_per_unit = ?, supplier = ? WHERE id = ? AND restaurant_id = ?',
+      [name, unit, stock_quantity || 0, min_quantity || 0, cost_per_unit || 0, supplier || null, ingredientId, activeRestaurantId]
+    );
+
+    res.json({
+      success: true,
+      message: 'Ingrédient modifié avec succès'
+    });
+
+  } catch (error) {
+    console.error('Erreur modification ingrédient:', error);
+    res.status(500).json({ error: 'Erreur lors de la modification de l\'ingrédient' });
+  }
+});
+
+// Route pour supprimer un ingrédient
+app.delete('/api/ingredients/:id', requireAuth, async (req, res) => {
+  try {
+    const ingredientId = req.params.id;
+    const activeRestaurantId = req.session.activeRestaurantId;
+
+    if (!activeRestaurantId) {
+      return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
+    }
+
+    // Vérifier que l'ingrédient appartient au restaurant
+    const existingIngredient = await get(
+      'SELECT id FROM ingredients WHERE id = ? AND restaurant_id = ?',
+      [ingredientId, activeRestaurantId]
+    );
+
+    if (!existingIngredient) {
+      return res.status(404).json({ error: 'Ingrédient non trouvé' });
+    }
+
+    await run('DELETE FROM ingredients WHERE id = ? AND restaurant_id = ?', [ingredientId, activeRestaurantId]);
+
+    res.json({
+      success: true,
+      message: 'Ingrédient supprimé avec succès'
+    });
+
+  } catch (error) {
+    console.error('Erreur suppression ingrédient:', error);
+    res.status(500).json({ error: 'Erreur lors de la suppression de l\'ingrédient' });
   }
 });
 

@@ -225,6 +225,19 @@ function getTableQueries() {
         UNIQUE(table_number, room_id)
       )`,
 
+      `CREATE TABLE IF NOT EXISTS ingredients (
+        id SERIAL PRIMARY KEY,
+        name VARCHAR(255) NOT NULL,
+        unit VARCHAR(50) NOT NULL,
+        stock_quantity DECIMAL(10,2) DEFAULT 0,
+        min_quantity DECIMAL(10,2) DEFAULT 0,
+        cost_per_unit DECIMAL(10,2) DEFAULT 0,
+        supplier VARCHAR(255),
+        restaurant_id INTEGER NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
+      )`,
+
       `CREATE TABLE IF NOT EXISTS orders (
         id SERIAL PRIMARY KEY,
         table_id INTEGER,
@@ -315,6 +328,19 @@ function getTableQueries() {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         FOREIGN KEY (room_id) REFERENCES rooms (id),
         UNIQUE(table_number, room_id)
+      )`,
+
+      `CREATE TABLE IF NOT EXISTS ingredients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        unit TEXT NOT NULL,
+        stock_quantity REAL DEFAULT 0,
+        min_quantity REAL DEFAULT 0,
+        cost_per_unit REAL DEFAULT 0,
+        supplier TEXT,
+        restaurant_id INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (restaurant_id) REFERENCES restaurants (id)
       )`,
 
       `CREATE TABLE IF NOT EXISTS orders (
