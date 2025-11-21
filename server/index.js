@@ -1293,40 +1293,6 @@ app.post('/api/rooms', requireAuth, async (req, res) => {
   }
 });
 
-// Route pour migrer les tables existantes (ajouter colonnes manquantes)
-app.post('/api/debug/migrate-tables', requireAuth, async (req, res) => {
-  try {
-    console.log('🔄 Migration des tables...');
-
-    // MySQL - ajouter les colonnes si elles n'existent pas
-    try {
-      await run('ALTER TABLE tables ADD COLUMN qr_code TEXT');
-      await run('ALTER TABLE tables ADD COLUMN x_position INTEGER DEFAULT 50');
-      await run('ALTER TABLE tables ADD COLUMN y_position INTEGER DEFAULT 50');
-      await run("ALTER TABLE tables ADD COLUMN shape VARCHAR(10) DEFAULT 'round'");
-      await run("ALTER TABLE tables ADD COLUMN table_size VARCHAR(10) DEFAULT 'medium'");
-      console.log('✅ Colonnes MySQL ajoutées');
-    } catch (error) {
-      console.log('⚠️ Colonnes déjà existantes ou erreur:', error.message);
-    }
-
-    // Mettre à jour les positions par défaut pour les tables sans position
-    await run('UPDATE tables SET x_position = 50 WHERE x_position IS NULL');
-    await run('UPDATE tables SET y_position = 50 WHERE y_position IS NULL');
-
-    res.json({
-      success: true,
-      message: 'Migration des tables terminée avec succès'
-    });
-
-  } catch (error) {
-    console.error('Erreur migration tables:', error);
-    res.status(500).json({
-      error: 'Erreur lors de la migration',
-      details: error.message
-    });
-  }
-});
 
 // Route de debug temporaire pour vérifier la structure des tables
 app.get('/api/debug/tables-structure', requireAuth, async (req, res) => {

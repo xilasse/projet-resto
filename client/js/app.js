@@ -72,27 +72,6 @@ class RestaurantApp {
             this.openRoomModal();
         });
 
-        // Bouton de migration des tables
-        document.getElementById('migrateTablesBtn').addEventListener('click', async () => {
-            if (confirm('Voulez-vous migrer la base de données pour ajouter les colonnes manquantes aux tables ?\n\nCela est nécessaire pour activer les QR codes sur les tables existantes.')) {
-                try {
-                    const response = await fetch('/api/debug/migrate-tables', { method: 'POST' });
-                    const result = await response.json();
-
-                    if (result.success) {
-                        alert('Migration réussie !\n' + result.message);
-                        // Recharger les tables
-                        await this.loadTables();
-                        this.renderRooms();
-                    } else {
-                        alert('Erreur lors de la migration: ' + result.error);
-                    }
-                } catch (error) {
-                    console.error('Erreur migration:', error);
-                    alert('Erreur lors de la migration');
-                }
-            }
-        });
 
         // Bouton pour générer tous les QR codes
         document.getElementById('generateAllQRBtn').addEventListener('click', async () => {
