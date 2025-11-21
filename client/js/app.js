@@ -899,14 +899,8 @@ class RestaurantApp {
                     </button>
                 </div>
                 <div class="quick-actions">
-                    <button class="btn btn-success btn-small" onclick="app.adjustIngredient(${ingredient.id}, 10)" title="Ajouter 10">
-                        +10
-                    </button>
-                    <button class="btn btn-warning btn-small" onclick="app.adjustIngredient(${ingredient.id}, -10)" title="Retirer 10">
-                        -10
-                    </button>
-                    <button class="btn btn-secondary btn-small" onclick="app.setIngredientStock(${ingredient.id})" title="Définir précisément">
-                        Définir
+                    <button class="btn btn-primary btn-small" onclick="app.setIngredientStock(${ingredient.id})" title="Modifier la quantité">
+                        📝 Modifier
                     </button>
                 </div>
             </div>
@@ -1003,13 +997,6 @@ class RestaurantApp {
     }
 
     // Gestion des ingrédients
-    async adjustIngredient(ingredientId, adjustment) {
-        const ingredient = this.ingredients.find(ing => ing.id === ingredientId);
-        if (!ingredient) return;
-
-        const newStock = Math.max(0, ingredient.stock_quantity + adjustment);
-        await this.updateIngredientStock(ingredientId, newStock);
-    }
 
     async updateIngredientFromInput(ingredientId) {
         const input = document.getElementById(`ingredient-input-${ingredientId}`);
@@ -1028,17 +1015,183 @@ class RestaurantApp {
         const ingredient = this.ingredients.find(ing => ing.id === ingredientId);
         if (!ingredient) return;
 
-        const newStock = prompt(`Stock actuel: ${ingredient.stock_quantity} ${ingredient.unit}\nNouveau stock:`, ingredient.stock_quantity);
-        if (newStock !== null && !isNaN(newStock)) {
-            this.updateIngredientStock(ingredientId, parseFloat(newStock));
+        // Supprimer modal existant s'il y en a un
+        const existingModal = document.querySelector('.stock-modal-overlay');
+        if (existingModal) {
+            existingModal.remove();
         }
+
+        const modalId = `stock-modal-${ingredientId}-${Date.now()}`;
+        const modal = document.createElement('div');
+        modal.className = 'stock-modal-overlay';
+        modal.innerHTML = `
+            <div class="stock-modal-inner">
+                <div class="modal-header">
+                    <h3>📦 Modifier le stock</h3>
+                    <button class="close-btn" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</button>
+                </div>
+                <form class="modal-content" onsubmit="app.handleStockModalSubmit(event, ${ingredientId})">
+                    <div class="stock-info">
+                        <div class="ingredient-details">
+                            <h4>${ingredient.name}</h4>
+                            <div class="current-stock">
+                                Stock actuel: <strong>${ingredient.stock_quantity} ${ingredient.unit}</strong>
+                            </div>
+                            ${ingredient.min_quantity > 0 ? `
+                                <div class="min-stock-info">
+                                    Seuil minimum: <span class="min-value">${ingredient.min_quantity} ${ingredient.unit}</span>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="new-stock-${modalId}">💱 Nouvelle quantité</label>
+                        <div class="input-with-unit">
+                            <input
+                                type="number"
+                                id="new-stock-${modalId}"
+                                name="newStock"
+                                value="${ingredient.stock_quantity}"
+                                min="0"
+                                step="0.1"
+                                required
+                                class="stock-input-large"
+                            >
+                            <span class="unit-suffix">${ingredient.unit}</span>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reason-${modalId}">📝 Raison du changement (optionnel)</label>
+                        <select id="reason-${modalId}" name="reason" class="reason-select">
+                            <option value="">-- Choisir une raison --</option>
+                            <option value="Réception livraison">📦 Réception livraison</option>
+                            <option value="Utilisation cuisine">👨‍🍳 Utilisation cuisine</option>
+                            <option value="Péremption/Perte">⚠️ Péremption/Perte</option>
+                            <option value="Inventaire">📊 Inventaire</option>
+                            <option value="Correction">✏️ Correction</option>
+                        </select>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" onclick="this.parentElement.parentElement.parentElement.remove()" class="btn-cancel">
+                            ❌ Annuler
+                        </button>
+                        <button type="submit" class="btn-submit">
+                            💾 Enregistrer
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Styles pour la modal
+        modal.style.cssText = `
+            display: flex !important;
+            position: fixed !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            background: rgba(0, 0, 0, 0.75) !important;
+            z-index: 99999 !important;
+            justify-content: center !important;
+            align-items: center !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        `;
+
+        // Styles pour la modal interne
+        const modalInner = modal.querySelector('.stock-modal-inner');
+        if (modalInner) {
+            modalInner.style.cssText = `
+                display: block !important;
+                background: white !important;
+                border-radius: 12px !important;
+                padding: 0 !important;
+                max-width: 500px !important;
+                width: 90% !important;
+                max-height: 90vh !important;
+                overflow-y: auto !important;
+                box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3) !important;
+                position: relative !important;
+                z-index: 100000 !important;
+            `;
+        }
+
+        // Styles pour le header
+        const modalHeader = modal.querySelector('.modal-header');
+        if (modalHeader) {
+            modalHeader.style.cssText = `
+                padding: 24px 28px !important;
+                border-bottom: 1px solid #e9ecef !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+                color: white !important;
+                border-radius: 12px 12px 0 0 !important;
+            `;
+        }
+
+        // Styles pour le contenu
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.style.cssText = `
+                padding: 28px !important;
+                background: white !important;
+            `;
+        }
+
+        // Auto-focus sur le champ de saisie
+        setTimeout(() => {
+            const input = modal.querySelector(`#new-stock-${modalId}`);
+            if (input) {
+                input.focus();
+                input.select();
+            }
+        }, 100);
+
+        console.log('✅ Modal stock créée pour:', ingredient.name);
     }
 
-    async updateIngredientStock(ingredientId, newStock) {
+    handleStockModalSubmit(event, ingredientId) {
+        event.preventDefault();
+
+        const formData = new FormData(event.target);
+        const newStock = parseFloat(formData.get('newStock'));
+        const reason = formData.get('reason') || 'Modification manuelle';
+
+        if (isNaN(newStock) || newStock < 0) {
+            this.showError('Veuillez entrer une quantité valide');
+            return;
+        }
+
+        // Fermer la modal
+        const modal = event.target.closest('.stock-modal-overlay');
+        if (modal) {
+            modal.remove();
+        }
+
+        // Mettre à jour le stock
+        this.updateIngredientStock(ingredientId, newStock, reason);
+    }
+
+    async updateIngredientStock(ingredientId, newStock, reason = 'Ajustement manuel') {
         const ingredient = this.ingredients.find(ing => ing.id === ingredientId);
         if (!ingredient) return;
 
         try {
+            console.log('🔄 Mise à jour stock ingrédient:', {
+                ingredientId,
+                oldStock: ingredient.stock_quantity,
+                newStock,
+                reason
+            });
+
             const response = await fetch(`/api/ingredients/${ingredientId}`, {
                 method: 'PUT',
                 headers: {
@@ -1055,16 +1208,16 @@ class RestaurantApp {
                 const movementType = newStock > ingredient.stock_quantity ? 'entree' : 'sortie';
                 const quantity = Math.abs(newStock - ingredient.stock_quantity);
                 if (quantity > 0) {
-                    await this.recordIngredientMovement(ingredientId, movementType, quantity, 'Ajustement manuel');
+                    await this.recordIngredientMovement(ingredientId, movementType, quantity, reason);
                 }
 
                 await this.loadStock();
-                this.showSuccess('Stock d\'ingrédient mis à jour');
+                this.showSuccess(`Stock de "${ingredient.name}" mis à jour: ${newStock} ${ingredient.unit}`);
             } else {
                 throw new Error('Erreur lors de la mise à jour du stock');
             }
         } catch (error) {
-            console.error('Erreur:', error);
+            console.error('❌ Erreur mise à jour stock:', error);
             this.showError('Erreur lors de la mise à jour du stock d\'ingrédient');
         }
     }
