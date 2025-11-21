@@ -1137,6 +1137,7 @@ class RestaurantApp {
             `;
         }
 
+
         // Styles pour le contenu
         const modalContent = modal.querySelector('.modal-content');
         if (modalContent) {
@@ -1155,7 +1156,53 @@ class RestaurantApp {
             }
         }, 100);
 
+        // Appliquer le style standard au bouton de fermeture
+        this.styleModalCloseButton(modal);
+
         console.log('✅ Modal stock créée pour:', ingredient.name);
+    }
+
+    // Fonction utilitaire pour styler les boutons de fermeture des modals
+    styleModalCloseButton(modal) {
+        const closeBtn = modal.querySelector('.close-btn');
+        if (!closeBtn) return;
+
+        closeBtn.style.cssText = `
+            background: rgba(255, 255, 255, 0.2) !important;
+            border: 2px solid rgba(255, 255, 255, 0.3) !important;
+            color: white !important;
+            width: 40px !important;
+            height: 40px !important;
+            border-radius: 50% !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            font-size: 24px !important;
+            font-weight: bold !important;
+            cursor: pointer !important;
+            transition: all 0.3s ease !important;
+            padding: 0 !important;
+            line-height: 1 !important;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+            position: relative !important;
+        `;
+
+        // Ajouter les effets hover
+        closeBtn.addEventListener('mouseenter', () => {
+            closeBtn.style.background = '#dc3545 !important';
+            closeBtn.style.borderColor = '#dc3545 !important';
+            closeBtn.style.transform = 'scale(1.1) !important';
+            closeBtn.style.boxShadow = '0 4px 16px rgba(220, 53, 69, 0.4) !important';
+        });
+
+        closeBtn.addEventListener('mouseleave', () => {
+            closeBtn.style.background = 'rgba(255, 255, 255, 0.2) !important';
+            closeBtn.style.borderColor = 'rgba(255, 255, 255, 0.3) !important';
+            closeBtn.style.transform = 'scale(1) !important';
+            closeBtn.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.15) !important';
+        });
+
+        console.log('✨ Bouton de fermeture stylé');
     }
 
     handleStockModalSubmit(event, ingredientId) {
