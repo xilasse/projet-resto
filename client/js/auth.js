@@ -1449,16 +1449,16 @@ class AuthManager {
         }
 
         // Supprimer le modal existant s'il y en a un
-        const existingModal = document.querySelector('.modal-overlay');
+        const existingModal = document.querySelector('.schedule-modal-overlay');
         if (existingModal) {
             existingModal.remove();
         }
 
         const modalId = `schedule-modal-${userId}-${dayIndex}-${Date.now()}`;
         const modal = document.createElement('div');
-        modal.className = 'modal-overlay';
+        modal.className = 'schedule-modal-overlay';
         modal.innerHTML = `
-            <div class="modal">
+            <div class="schedule-modal-inner">
                 <div class="modal-header">
                     <h3>📅 Modifier le planning</h3>
                     <button class="close-btn" onclick="this.parentElement.parentElement.parentElement.remove()">&times;</button>
@@ -1509,7 +1509,7 @@ class AuthManager {
         document.body.appendChild(modal);
         console.log('✅ Modal planning ajouté au DOM');
         console.log('📱 Modal HTML créé:', modal.innerHTML.substring(0, 200) + '...');
-        console.log('🔍 Modals existants après:', document.querySelectorAll('.modal-overlay').length);
+        console.log('🔍 Modals existants après:', document.querySelectorAll('.schedule-modal-overlay').length);
 
         // S'assurer que le modal est visible - STYLES ULTRA FORCÉS
         modal.style.cssText = `
@@ -1528,12 +1528,13 @@ class AuthManager {
         `;
 
         // Styles pour le modal interne
-        const modalInner = modal.querySelector('.modal');
+        const modalInner = modal.querySelector('.schedule-modal-inner');
         if (modalInner) {
             modalInner.style.cssText = `
+                display: block !important;
                 background: white !important;
                 border-radius: 8px !important;
-                padding: 20px !important;
+                padding: 0 !important;
                 max-width: 500px !important;
                 width: 90% !important;
                 max-height: 90vh !important;
@@ -1544,13 +1545,38 @@ class AuthManager {
             `;
         }
 
+        // Styles pour le header
+        const modalHeader = modal.querySelector('.modal-header');
+        if (modalHeader) {
+            modalHeader.style.cssText = `
+                padding: 20px 25px !important;
+                border-bottom: 1px solid #ecf0f1 !important;
+                display: flex !important;
+                justify-content: space-between !important;
+                align-items: center !important;
+                background: white !important;
+                border-radius: 8px 8px 0 0 !important;
+            `;
+        }
+
+        // Styles pour le contenu
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.style.cssText = `
+                padding: 25px !important;
+                background: white !important;
+            `;
+        }
+
         console.log('🎯 Modal planning affiché avec styles ULTRA FORCÉS');
         console.log('📏 Modal dimensions:', modal.getBoundingClientRect());
 
         // Alert de debug pour être sûr
         setTimeout(() => {
-            if (document.querySelectorAll('.modal-overlay').length > 0) {
+            if (document.querySelectorAll('.schedule-modal-overlay').length > 0) {
                 console.log('✅ Modal bien présent dans le DOM après 1sec');
+                console.log('📍 Style computed du modal:', window.getComputedStyle(modal).display);
+                console.log('📍 Style computed du modal inner:', window.getComputedStyle(modalInner).display);
             } else {
                 console.error('❌ Modal disparu du DOM !');
             }
