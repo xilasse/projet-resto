@@ -668,23 +668,45 @@ app.post('/api/menu', requireAuth, async (req, res) => {
 app.put('/api/menu/:id', requireAuth, async (req, res) => {
   try {
     const { id } = req.params;
-    const { name, description, price, category, stockQuantity, imageUrl, isAvailable } = req.body;
+    const { name, description, price, category, stockQuantity, stock_quantity, imageUrl, image_url, isAvailable, is_available } = req.body;
     const activeRestaurantId = req.session.activeRestaurantId;
 
     if (!activeRestaurantId) {
       return res.status(400).json({ error: 'Aucun restaurant sélectionné' });
     }
 
+    // Support des deux formats de paramètres (camelCase et snake_case)
+    const finalStockQuantity = stockQuantity !== undefined ? stockQuantity : stock_quantity;
+    const finalImageUrl = imageUrl !== undefined ? imageUrl : image_url;
+    const finalIsAvailable = isAvailable !== undefined ? isAvailable : is_available;
+
+    console.log('🍽️ Modification menu item:', {
+      id, name, description, price, category,
+      stockQuantity: finalStockQuantity,
+      imageUrl: finalImageUrl,
+      isAvailable: finalIsAvailable
+    });
 
     await run(`
       UPDATE menu_items
-      SET name = ?, description = ?, price = ?, category = ?, image_url = ?, is_available = ?
+      SET name = ?, description = ?, price = ?, category = ?, stock_quantity = ?, image_url = ?, is_available = ?
       WHERE id = ? AND restaurant_id = ?
-    `, [name, description, price, category, imageUrl || null, isAvailable !== undefined ? isAvailable : 1, id, activeRestaurantId]);
+    `, [
+      name,
+      description,
+      price,
+      category,
+      finalStockQuantity !== undefined ? finalStockQuantity : 0,
+      finalImageUrl || null,
+      finalIsAvailable !== undefined ? finalIsAvailable : 1,
+      id,
+      activeRestaurantId
+    ]);
 
+    console.log('✅ Menu item modifié avec succès');
     res.json({ success: true });
   } catch (error) {
-    console.error('Erreur modification menu item:', error);
+    console.error('❌ Erreur modification menu item:', error);
     res.status(500).json({ error: 'Erreur lors de la modification' });
   }
 });

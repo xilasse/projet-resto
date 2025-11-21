@@ -141,6 +141,14 @@ async function createTables() {
       console.log('⚠️ Table déjà existante ou erreur:', error.message);
     }
   }
+
+  // Migration pour ajouter stock_quantity si elle n'existe pas
+  try {
+    await db.execute('ALTER TABLE menu_items ADD COLUMN stock_quantity INT DEFAULT 0');
+    console.log('✅ Colonne stock_quantity ajoutée à menu_items');
+  } catch (error) {
+    console.log('ℹ️ Colonne stock_quantity déjà existante ou autre erreur:', error.message);
+  }
 }
 
 function getTableQueries() {
@@ -187,6 +195,7 @@ function getTableQueries() {
         price DECIMAL(10,2) NOT NULL,
         category VARCHAR(255),
         image_url TEXT,
+        stock_quantity INT DEFAULT 0,
         is_available BOOLEAN DEFAULT true,
         restaurant_id INT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
