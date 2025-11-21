@@ -72,7 +72,11 @@ jspm_packages/
 
 # Database files
 *.db
-restaurant.db
+*.sqlite
+*.sqlite3
+
+# MySQL dumps (si nécessaire)
+*.sql
 
 # Build directories
 dist/

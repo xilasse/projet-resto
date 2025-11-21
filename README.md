@@ -8,8 +8,18 @@ Cette application est configurée pour être déployée sur Railway.
 
 ### Variables d'environnement nécessaires
 
-- `PORT`: Port du serveur (automatiquement défini par Railway)
-- `NODE_ENV`: Environnement (production)
+**Pour le développement local :**
+- `MYSQL_HOST`: Hôte MySQL (localhost)
+- `MYSQL_USER`: Utilisateur MySQL (root)
+- `MYSQL_PASSWORD`: Mot de passe MySQL
+- `MYSQL_DATABASE`: Nom de la base (restaurant_db)
+- `PORT`: Port du serveur (5000)
+- `NODE_ENV`: Environnement (development/production)
+
+**Pour la production :**
+- `DATABASE_URL`: URL complète MySQL (recommandé)
+- `PORT`: Port du serveur (automatiquement défini)
+- `NODE_ENV`: production
 
 ### 📁 Structure du projet
 
@@ -25,11 +35,13 @@ projet-resto/
 
 ### 🛠️ Technologies utilisées
 
-- **Backend**: Node.js, Express.js, SQLite3
+- **Backend**: Node.js, Express.js, MySQL2
 - **Frontend**: HTML5, CSS3, JavaScript Vanilla
-- **Base de données**: SQLite (intégrée)
+- **Base de données**: MySQL
 - **QR Codes**: qrcode library
-- **Paiements**: Stripe integration
+- **Sessions**: express-session
+- **Authentification**: bcryptjs
+- **Validation**: express-validator
 
 ### 📋 Fonctionnalités
 
@@ -43,20 +55,54 @@ projet-resto/
 
 ### 🔧 Installation locale
 
-```bash
-# Installer toutes les dépendances
-npm run install-all
+**Prérequis :**
+- Node.js (v14+)
+- MySQL Server
 
-# Démarrer le serveur de développement
+**Étapes :**
+
+1. **Installer les dépendances**
+```bash
+cd server
+npm install
+```
+
+2. **Configurer MySQL**
+```sql
+CREATE DATABASE restaurant_db;
+```
+
+3. **Variables d'environnement**
+```bash
+# Copier le template
+cp server/.env.example server/.env
+
+# Éditer avec vos paramètres MySQL
+MYSQL_HOST=localhost
+MYSQL_USER=root
+MYSQL_PASSWORD=votre_password
+MYSQL_DATABASE=restaurant_db
+```
+
+4. **Démarrer l'application**
+```bash
 npm start
 ```
 
+L'application sera accessible sur `http://localhost:5000`
+
 ### 🌐 Déploiement
 
+**Railway (recommandé) :**
+
 1. Connectez votre repository à Railway
-2. Railway détectera automatiquement la configuration
-3. Les variables d'environnement seront configurées automatiquement
+2. Ajoutez une base de données MySQL
+3. Configurez `DATABASE_URL` dans les variables d'environnement
 4. Le déploiement se lance automatiquement
+
+**Variables Railway :**
+- `DATABASE_URL` : URL MySQL fournie par Railway
+- `NODE_ENV` : production
 
 ### 📱 Utilisation
 
